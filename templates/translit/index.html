@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}传统满文 ⇄ 拉丁满文 · {{ site.platform_name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/translit.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="section translit-section">
+  <div class="section-head">
+    <div class="section-eyebrow">Transliteration</div>
+    <h2 class="section-title">传统满文 ⇄ 拉丁满文</h2>
+    <p class="section-desc">
+      基于规则的双向互转，支持整篇文本即时转换与多格式批量处理；
+      Word 转 Word 可保留段落结构。<b>纯前端执行，零后端依赖。</b>
+    </p>
+  </div>
+
+  <div class="translit-app">
+    <!-- ==================== 模式切换 ==================== -->
+    <div class="top-bar">
+      <button class="mode-btn active" data-mode="to-latin" onclick="window.setMode('to-latin')">满文 → 拉丁</button>
+      <button class="mode-btn" data-mode="to-manju" onclick="window.setMode('to-manju')">拉丁 → 满文</button>
+      <span class="tl-hint-inline">快捷键 Ctrl+Enter 执行转换</span>
+    </div>
+
+    <!-- ==================== 批量文件处理 ==================== -->
+    <div class="file-section">
+      <h3>📁 批量文件处理（支持 .txt .csv .md .json .xml .html .docx）</h3>
+      <div class="file-buttons">
+        <div class="file-btn">
+          上传单个文件
+          <input type="file" id="fileInput" accept=".txt,.csv,.md,.json,.xml,.html,.docx" onchange="window.handleFileSelect(event)">
+        </div>
+        <div class="file-btn">
+          上传文件夹
+          <input type="file" id="folderInput" webkitdirectory directory multiple onchange="window.handleFolderSelect(event)">
+        </div>
+      </div>
+      <div class="file-list" id="fileList"></div>
+      <div class="progress-bar" id="progressBar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="batch-actions" id="batchActions" style="display:none;">
+        <button class="batch-btn" id="processBtn" onclick="window.processFiles()">开始批量转换</button>
+        <button class="batch-btn word" id="wordBtn" onclick="window.downloadAllWord()" style="display:none;">导出 Word</button>
+        <button class="batch-btn secondary" id="txtBtn" onclick="window.downloadAll()" style="display:none;">导出 TXT</button>
+        <button class="batch-btn secondary" id="clearBtn" onclick="window.clearFiles()">清空列表</button>
+      </div>
+    </div>
+
+    <!-- ==================== 双栏转换区 ==================== -->
+    <div class="panels">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-label" id="label-input">满文输入</span>
+          <div class="panel-actions">
+            <button class="icon-btn" onclick="window.pasteInput()" title="粘贴">📋</button>
+            <button class="icon-btn" onclick="window.clearInput()" title="清空">✕</button>
+          </div>
+        </div>
+        <textarea id="input" class="vertical-mode" placeholder="在此输入满文 Unicode 文本..."></textarea>
+        <div class="stats" id="input-stats">0 字符</div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-label" id="label-output">拉丁转写</span>
+          <div class="panel-actions">
+            <button class="icon-btn" onclick="window.copyOutput()" title="复制结果">📋</button>
+            <button class="icon-btn" onclick="window.clearOutput()" title="清空">✕</button>
+          </div>
+        </div>
+        <textarea id="output" class="horizontal-mode" readonly placeholder="转换结果将显示在这里..."></textarea>
+        <div class="stats" id="output-stats">0 字符</div>
+      </div>
+    </div>
+
+    <!-- ==================== 操作栏 ==================== -->
+    <div class="convert-bar">
+      <button class="convert-btn" onclick="window.convert()">执行转换</button>
+      <button class="word-btn" onclick="window.downloadCurrentWord()">📄 转 Word</button>
+      <button class="swap-btn" onclick="window.swapText()" title="交换内容">⇄</button>
+      <span class="hint">
+        <code>manju2latin</code>：满文 Unicode → 拉丁字母　|　<code>latin2manju</code>：拉丁字母 → 满文 Unicode　|　Word 保留段落结构　|　纯前端零依赖
+      </span>
+    </div>
+  </div>
+</section>
+
+<div class="toast" id="toast"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/translit.js') }}"></script>
+{% endblock %}

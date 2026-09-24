@@ -1,0 +1,210 @@
+/* ============================================================
+   传统满文 ⇄ 拉丁满文 · 模块样式
+
+   色彩统一策略：全部取自 design-token（鎏金 / 墨蓝 / 墨绿 / 米白），
+   源页面的「科技蓝 #3182ce」与深色全屏底已替换为门户色板，
+   与古籍 OCR 页面保持同一套视觉语言（白卡片 + 纸色工具条 + 金色主操作）。
+
+   类名沿用源文件（mode-btn / file-btn / batch-btn / vertical-mode ...），
+   JS 未做任何改动，DOM 结构保持一致即可正常工作。
+   依赖：css/design-token.css + css/base.css
+   ============================================================ */
+
+.translit-section { padding-top: 40px; }
+
+.translit-app {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+/* ============================================================
+   1. 模式切换条
+   ============================================================ */
+.top-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 14px 18px;
+  background: linear-gradient(180deg, #fff, var(--paper));
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 1px 0 rgba(201,162,39,.18);
+}
+.mode-btn {
+  padding: 8px 22px; border-radius: 8px; cursor: pointer;
+  font-size: 14px; font-family: var(--sans);
+  border: 1px solid var(--line); background: #fff; color: var(--text-2);
+  transition: background .22s, color .22s, border-color .22s, box-shadow .22s, transform .22s;
+}
+.mode-btn:hover:not(.active) { border-color: var(--gold-dim); color: var(--text); }
+.mode-btn.active {
+  background: linear-gradient(135deg, var(--gold), #a8861d);
+  border-color: var(--gold); color: #fff; font-weight: 700;
+  box-shadow: 0 2px 10px rgba(201,162,39,.35);
+}
+.tl-hint-inline { margin-left: auto; font-size: 12px; color: var(--text-3); }
+
+/* ============================================================
+   2. 批量文件处理
+   ============================================================ */
+.file-section {
+  margin: 16px 18px; padding: 16px 18px; text-align: center;
+  background: var(--paper);
+  border: 1px dashed var(--gold-dim);
+  border-radius: 12px;
+}
+.file-section h3 {
+  font-size: 13px; color: var(--text-2); margin-bottom: 12px; font-weight: 600;
+}
+.file-buttons { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+.file-btn {
+  position: relative; overflow: hidden;
+  padding: 9px 20px; border-radius: 8px; cursor: pointer;
+  font-size: 13px; font-family: var(--sans);
+  background: rgba(201,162,39,.10);
+  border: 1px solid var(--gold-dim); color: #8b6914; font-weight: 600;
+  transition: background .22s, box-shadow .22s;
+}
+.file-btn:hover { background: rgba(201,162,39,.18); box-shadow: var(--shadow-sm); }
+.file-btn input[type="file"] {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  opacity: 0; cursor: pointer;
+}
+
+.file-list { margin-top: 12px; text-align: left; max-height: 140px; overflow-y: auto; }
+.file-item {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 6px 12px; background: #fff; border: 1px solid var(--line);
+  border-radius: 6px; margin-bottom: 4px; font-size: 12px;
+}
+.file-item .name {
+  color: var(--text-2); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.file-item .status { font-size: 11px; color: var(--green); white-space: nowrap; }
+.file-item .status.error { color: #b3261e; }
+.file-item .status.pending { color: var(--text-3); }
+
+.progress-bar {
+  width: 100%; height: 4px; background: rgba(44,24,16,.08);
+  border-radius: 2px; margin-top: 8px; overflow: hidden; display: none;
+}
+.progress-bar.active { display: block; }
+.progress-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--gold), var(--gold-light));
+  transition: width .3s;
+}
+
+.batch-actions { display: flex; justify-content: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+.batch-btn {
+  padding: 8px 20px; border-radius: 8px; cursor: pointer;
+  font-size: 13px; font-family: var(--sans);
+  border: 1px solid var(--green);
+  background: linear-gradient(135deg, var(--green), var(--green-dark)); color: #fff;
+  transition: box-shadow .22s, transform .22s;
+}
+.batch-btn:hover { box-shadow: 0 2px 10px rgba(46,125,90,.35); }
+.batch-btn.secondary { background: #fff; color: var(--text-2); border-color: var(--line); }
+.batch-btn.secondary:hover { border-color: var(--gold-dim); color: var(--text); }
+.batch-btn.word {
+  background: linear-gradient(135deg, var(--ink-4), var(--ink-2));
+  border-color: var(--ink-4); color: var(--gold-pale);
+}
+.batch-btn:disabled { opacity: .45; cursor: not-allowed; filter: grayscale(.6); }
+
+/* ============================================================
+   3. 双栏转换区（左：源文本 / 右：结果）
+   ============================================================ */
+.panels { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 0 18px 16px; }
+@media (max-width: 880px) { .panels { grid-template-columns: 1fr; } }
+
+.panel {
+  background: var(--paper); border: 1px solid var(--line); border-radius: 12px;
+  padding: 14px; display: flex; flex-direction: column; min-height: 0;
+}
+.panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.panel-label { font-size: 13px; font-weight: 700; color: var(--text); letter-spacing: .05em; }
+.panel-actions { display: flex; gap: 6px; }
+.icon-btn {
+  width: 26px; height: 26px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--line); background: #fff; color: var(--text-3);
+  font-size: 12px; line-height: 1;
+  transition: color .22s, border-color .22s;
+}
+.icon-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+
+textarea {
+  width: 100%; min-height: 420px; resize: vertical;
+  border: 1px solid var(--line); border-radius: 8px; background: #fff;
+  padding: 12px; outline: none;
+  transition: border-color .22s, box-shadow .22s;
+}
+textarea:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,162,39,.15); }
+textarea::placeholder { color: var(--text-3); opacity: .7; }
+
+/* 满文：竖排 + 满文字体（沿用门户已注册的 Buleku） */
+.vertical-mode {
+  writing-mode: vertical-lr;
+  text-orientation: sideways-right;
+  font-family: var(--manju);
+  font-size: 42px; line-height: 1.15;
+}
+/* 拉丁：横排 */
+.horizontal-mode {
+  writing-mode: horizontal-tb;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 26px; line-height: 1.6;
+}
+.stats { margin-top: 8px; font-size: 11.5px; color: var(--text-3); text-align: right; }
+
+/* ============================================================
+   4. 操作栏与提示
+   ============================================================ */
+.convert-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 14px 18px; border-top: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--paper), #fff);
+}
+.convert-btn {
+  padding: 10px 34px; border-radius: 8px; cursor: pointer;
+  font-size: 15px; font-family: var(--sans); font-weight: 700;
+  background: linear-gradient(135deg, var(--gold), #a8861d);
+  border: 1px solid var(--gold); color: #fff;
+  transition: box-shadow .22s, transform .22s;
+}
+.convert-btn:hover { box-shadow: 0 2px 12px rgba(201,162,39,.45); transform: translateY(-1px); }
+
+.word-btn {
+  padding: 10px 20px; border-radius: 8px; cursor: pointer;
+  font-size: 13px; font-family: var(--sans); font-weight: 600;
+  background: rgba(15,52,96,.06); border: 1px solid rgba(15,52,96,.24); color: var(--ink-4);
+  transition: background .22s;
+}
+.word-btn:hover { background: rgba(15,52,96,.12); }
+
+.swap-btn {
+  width: 38px; height: 38px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--line); background: #fff; color: var(--text-2); font-size: 16px;
+  transition: border-color .22s, color .22s;
+}
+.swap-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+
+.hint { flex: 1; min-width: 260px; font-size: 12px; color: var(--text-3); line-height: 1.9; }
+.hint code {
+  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px;
+  background: rgba(201,162,39,.10); color: #8b6914;
+  border: 1px solid var(--gold-dim); border-radius: 4px; padding: 1px 5px;
+}
+
+/* ============================================================
+   5. 轻提示
+   ============================================================ */
+.toast {
+  position: fixed; left: 50%; bottom: 40px; z-index: 999;
+  transform: translateX(-50%) translateY(16px);
+  background: var(--ink-3); color: var(--gold-pale);
+  padding: 10px 22px; border-radius: 8px; font-size: 13px;
+  box-shadow: var(--shadow-lg); opacity: 0; pointer-events: none;
+  transition: opacity .28s, transform .28s;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
