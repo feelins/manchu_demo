@@ -34,9 +34,15 @@ PORTAL_PORT="${PORTAL_PORT:-8000}"
 LOG_DIR="${PORTAL_DIR}/logs"
 mkdir -p "$LOG_DIR"
 
+# 按监听端口反查 PID：比 pgrep -f 可靠——进程的 argv[0] 可能只是 "python"（无路径），
+# 用解释器绝对路径去 pgrep 会匹配不到，导致 status 误报"未运行"、stop 也停不掉。
+pid_on_port() {
+  ss -lntp 2>/dev/null | grep -E ":${1}[^0-9]" | grep -oE 'pid=[0-9]+' | head -1 | cut -d= -f2
+}
+
 ocr_pid()   { pgrep -f "server.py --host .*--port ${OCR_PORT}" | head -1; }
-tts_pid()   { pgrep -f "${TTS_PY} app.py" | head -1; }
-portal_pid(){ pgrep -f "${PORTAL_PY} app.py" | head -1; }
+tts_pid()   { pid_on_port "$TTS_PORT"; }
+portal_pid(){ pid_on_port "$PORTAL_PORT"; }
 
 start_ocr() {
   if [[ -n "$(ocr_pid)" ]]; then

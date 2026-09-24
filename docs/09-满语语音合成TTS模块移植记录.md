@@ -137,6 +137,7 @@ reference/00000016.wav  +  reference/00000016.txt
 | 3 | 偶发 403，但服务端 access log 无记录 | 未能从代码层面复现定位：项目与上游服务源码中均无 403 分支，日志也无对应条目。当时的处理是先确认端口未被占用 → 重拉门户 → 恢复 200。**后续若再现，先抓 `ss -lntp` 看 8000 到底是谁在听** |
 | 4 | uvicorn 访问日志缺失 | 上游用自定义 `--log-config` 覆盖了默认 access log，排查时不要依赖它的访问日志，改用 `/healthz` 探活 |
 | 5 | 首帧合成极慢 | GPT-SoVITS 首次加载权重约 20~60 秒，`services.sh` 的 `wait_up` 最多等 120 秒；页面上也做了"首次加载较慢"的提示 |
+| 6 | `services.sh status` 误报 TTS "未运行"（实际在跑，合成正常） | 进程 `argv[0]` 只是 `python`（无解释器路径），用 `pgrep -f "<绝对路径> app.py"` 匹配不到；已改为 `ss -lntp` **按监听端口反查 PID**（`pid_on_port`），门户同理 |
 
 ---
 
