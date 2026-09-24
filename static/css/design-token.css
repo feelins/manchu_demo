@@ -1,0 +1,30 @@
+/* ============================================================
+   设计令牌（Design Token）
+   全站唯一配色/字体/圆角/阴影来源，所有模块共用。
+   墨蓝底 #1a1a2e~#0f3460 · 鎏金 #c9a227 · 墨绿 #2e7d5a · 米白 #faf8f5
+   ============================================================ */
+:root{
+  --ink:#0f1626;
+  --ink-2:#16213e;
+  --ink-3:#1a1a2e;
+  --ink-4:#0f3460;
+  --gold:#c9a227;
+  --gold-light:#e5c158;
+  --gold-pale:#f5e6c8;
+  --gold-dim:rgba(201,162,39,.34);
+  --cream:#faf8f5;
+  --paper:#f5f0e8;
+  --green:#2e7d5a;
+  --green-dark:#256a4a;
+  --text:#2c1810;
+  --text-2:#5b5147;
+  --text-3:#8a7f72;
+  --line:#e3dbcd;
+  --serif:"Songti SC","STSong","Noto Serif SC","Source Han Serif SC","SimSun",serif;
+  --sans:"Microsoft YaHei","PingFang SC","Hiragino Sans GB","Source Han Sans SC",sans-serif;
+  --manju:"Buleku","Mongolian Baiti",var(--serif);
+  --shadow-sm:0 2px 8px rgba(44,24,16,.06);
+  --shadow-md:0 8px 28px rgba(44,24,16,.10);
+  --shadow-lg:0 18px 50px rgba(15,22,38,.20);
+  --radius:14px;
+}

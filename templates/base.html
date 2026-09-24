@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}通化师范学院 · {{ site.platform_name }}{% endblock %}</title>
+
+<!-- 设计令牌 + 门户基础样式（全站共用） -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-token.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+
+<!-- 满文字体（本地内置，不依赖 CDN） -->
+<style>
+@font-face{
+  font-family:"Buleku";
+  src:url("{{ url_for('static', filename='fonts/001A-Buleku-R.ttf') }}") format("truetype");
+  font-weight:normal;font-style:normal;font-display:swap;
+}
+</style>
+
+{% block extra_css %}{% endblock %}
+</head>
+<body>
+
+{% include "partials/header.html" %}
+
+<main id="main">
+{% block content %}{% endblock %}
+</main>
+
+{% include "partials/footer.html" %}
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# 运行日志（scripts/services.sh 输出到 logs/）
+logs/

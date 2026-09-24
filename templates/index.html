@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}通化师范学院 · {{ site.platform_name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<!-- ==================== Hero ==================== -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-script">ᠮᠠᠨᠵᡠ ᡤᡳᠰᡠᠨ</div>
+
+    <div class="hero-copy">
+      <div class="hero-eyebrow">{{ site.platform_name }}</div>
+      <h1>满语文数智化<br>开发与沉浸式体验平台</h1>
+      <p class="hero-sub">
+        以人工智能技术支撑满语文的<b>识别</b>、<b>转换</b>、<b>翻译</b>、<b>合成</b>与<b>语料建设</b>，
+        面向科研、教学与公众展示，构建满语文数字资源的一体化入口。
+      </p>
+      <div class="hero-rule"></div>
+    </div>
+  </div>
+
+  <div class="hero-stats">
+    <div class="hero-stat"><b>古籍 OCR</b>竖排满文识别 · 版面与文本框检测</div>
+    <div class="hero-stat"><b>文字转换</b>传统满文 ⇄ 拉丁满文双向互转</div>
+    <div class="hero-stat"><b>满汉翻译</b>机器学习翻译 · 译文质量评估</div>
+    <div class="hero-stat"><b>语音技术</b>满语语音合成与识别</div>
+  </div>
+</section>
+
+<!-- ==================== 平台能力 ==================== -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-eyebrow">Capabilities</div>
+    <h2 class="section-title">平台能力</h2>
+    <p class="section-desc">
+      六大功能入口依托统一的门户与设计语言，各模块独立运行、按需接入，共同支撑满语文的数字化研究与展示。
+    </p>
+  </div>
+
+  <div class="grid grid-3">
+    {% for card in capability_cards %}
+    <a class="card" href="{{ url_for(card.key + '.index') }}">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24"><path d="{{ card.icon }}"/></svg>
+      </div>
+      <h3>{{ card.title }}</h3>
+      <div class="card-manju">{{ card.manju }}</div>
+      <p>{{ card.desc }}</p>
+      <div class="card-tags">
+        {% for text, cls in card.tags %}
+        <span class="tag {{ cls }}">{{ text }}</span>
+        {% endfor %}
+      </div>
+      <div class="card-enter">进入系统 <span class="arrow">→</span></div>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- ==================== 推理过程可视化 ==================== -->
+<div class="section-alt">
+  <section class="section">
+    <div class="section-head">
+      <div class="section-eyebrow">Inference Trace</div>
+      <h2 class="section-title">推理过程可视化</h2>
+      <p class="section-desc">
+        平台不隐藏模型的黑箱：翻译、合成与识别三条推理链路均以步骤化方式实时呈现，
+        让每一个环节都可见、可解释、可追溯。
+      </p>
+    </div>
+
+    <div class="pipeline">
+      {% for pipe in trace_pipelines %}
+      <div class="pipe">
+        <div class="pipe-head">
+          <span class="badge">{{ pipe.badge }}</span>
+          <h3>{{ pipe.title }}</h3>
+        </div>
+        <ul class="steps">
+          {% for title, note in pipe.steps %}
+          <li><b>{{ title }}</b><span>{{ note }}</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+
+<!-- ==================== 语料集数据 ==================== -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-eyebrow">Corpus</div>
+    <h2 class="section-title">语料与数据资源</h2>
+    <p class="section-desc">
+      平台持续归集与建设各类满语文数据资源，为模型训练、语言学研究与文献整理提供基础支撑。
+      <!-- 注：以下数值待数据负责人核实后填写，暂以占位符呈现，避免对外展示不准确数据 -->
+    </p>
+  </div>
+
+  <div class="grid grid-5">
+    {% for item in corpus_stats %}
+    <div class="data-card">
+      <div class="data-num{% if item.num == '—' %} is-empty{% endif %}">{{ item.num }}</div>
+      <div class="data-label">{{ item.label }}</div>
+      <div class="data-note">{{ item.note }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- ==================== 工作平台 ==================== -->
+<section class="section" style="padding-top:0;">
+  <div class="workspace">
+    <div class="workspace-head">
+      <h2>工作平台</h2>
+      <p>仅对平台内部人员开放 · 需登录并获得相应权限</p>
+    </div>
+
+    <div class="workspace-grid">
+      <div class="ws-card">
+        <h4>满文古籍 OCR 数据标注</h4>
+        <p>对古籍图像进行文本框标注与文本校正，标注结果经审核后纳入语料库，可持续用于模型训练。</p>
+        <span class="ws-tag">需登录 · 标注 / 审核</span>
+      </div>
+      <div class="ws-card">
+        <h4>满汉双行数据校验</h4>
+        <p>对满汉对照数据进行逐行校验与在线修订，保障平行语料的格式规范与内容准确。</p>
+        <span class="ws-tag">需登录 · 校验 / 修订</span>
+      </div>
+      <div class="ws-card">
+        <h4>依存语法可视化</h4>
+        <p>面向满语句法研究，提供依存关系标注与可视化编辑，支持标注成果的保存与导出。</p>
+        <span class="ws-tag">需登录 · 标注 / 研究</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

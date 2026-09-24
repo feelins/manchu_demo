@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}满文古籍 OCR · {{ site.platform_name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ocr.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="section ocr-section">
+  <div class="section-head">
+    <div class="section-eyebrow">Manuscript OCR</div>
+    <h2 class="section-title">满文古籍 OCR</h2>
+    <p class="section-desc">
+      面向竖排古籍的满文光学字符识别：上传图像后可选用<b>正楷</b>或<b>古籍</b>模型识别，
+      按列展示传统满文结果，并可同步识读页面中的汉字；支持批量处理与结果导出。
+    </p>
+  </div>
+
+  <div class="ocr-app">
+    <!-- ==================== 工具栏 ==================== -->
+    <div class="ocr-toolbar">
+      <button id="uploadBtn" class="btn btn-primary">📁 上传图片</button>
+      <input type="file" id="fileInput" accept="image/*" hidden>
+
+      <button id="recognizeStandardBtn" class="btn btn-gold" disabled>🔍 正楷AI识别</button>
+      <button id="recognizeAncientBtn" class="btn btn-gold" disabled>📜 古籍AI识别</button>
+      <button id="toggleThumbBtn" class="btn" disabled>👁️ 显示列图</button>
+      <button id="recognizeChineseBtn" class="btn btn-green" disabled>🇨🇳 识别汉字</button>
+      <button id="batchBtn" class="btn btn-ink">📦 批量处理</button>
+      <input type="file" id="batchFileInput" accept="image/*" multiple hidden>
+      <button id="exportBtn" class="btn btn-outline" disabled>📤 导出结果</button>
+
+      <span class="divider"></span>
+
+      <label class="field"><span>汉字字号</span>
+        <select id="hanSize">
+          <option value="16">16</option>
+          <option value="18">18</option>
+          <option value="20">20</option>
+          <option value="24">24</option>
+        </select>
+      </label>
+      <label class="field"><span>满文字号</span>
+        <select id="manjuSize">
+          <option value="26">26</option>
+          <option value="30">30</option>
+          <option value="34">34</option>
+          <option value="38">38</option>
+          <option value="42">42</option>
+          <option value="46" selected>46</option>
+          <option value="50">50</option>
+          <option value="54">54</option>
+          <option value="58">58</option>
+          <option value="62">62</option>
+          <option value="66">66</option>
+        </select>
+      </label>
+      <button id="refreshView" class="btn btn-ghost">🔄 刷新视图</button>
+
+      <span class="spacer"></span>
+
+      <label class="field field-server"><span>后端</span>
+        <input type="text" id="serverUrl" list="serverList" value="{{ ocr_api }}" placeholder="{{ ocr_api }}">
+        <datalist id="serverList">
+          <option value="{{ ocr_api }}"></option>
+        </datalist>
+      </label>
+
+      <span id="status" class="status-pill">就绪</span>
+    </div>
+
+    <!-- ==================== 空状态 ==================== -->
+    <div class="ocr-empty" id="emptyHint">
+      <div class="ocr-empty-mark">ᠪᡳᡨᡥᡝ</div>
+      <p>请先<b>上传图片</b>（单张）或<b>批量处理</b>（多张），识别结果将按列展示在此处。</p>
+      <p class="ocr-empty-note">支持竖排古籍与正楷满文；勾选「识别汉字」可同步识读页面中的汉字。</p>
+    </div>
+
+    <!-- ==================== 主工作区 ==================== -->
+    <div class="ocr-main" id="mainPanel" style="display:none;">
+      <div class="ocr-left" id="leftPanel">
+        <div class="ocr-left-head">原图</div>
+        <img id="origImg" src="" alt="原图">
+      </div>
+
+      <div class="ocr-resizer" id="resizer" title="拖动调整宽度"></div>
+
+      <div class="ocr-right">
+        <div class="ocr-right-head">识别结果（竖排列）</div>
+        <div class="columns-container" id="columnsContainer"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 批量进度 ==================== -->
+<div id="batchOverlay">
+  <div class="dialog-box">
+    <div class="dialog-title">📦 批量处理中</div>
+    <div class="dialog-sub" id="batchProgressModel">古籍AI识别</div>
+    <div class="progress-bg">
+      <div class="progress-fill" id="batchProgressBar"></div>
+    </div>
+    <div class="dialog-text" id="batchProgressText">0 / 0</div>
+    <div class="dialog-note" id="batchProgressCurrent">准备中...</div>
+  </div>
+</div>
+
+<!-- ==================== 模型选择 ==================== -->
+<div id="modelSelectOverlay">
+  <div class="dialog-box">
+    <div class="dialog-title">请选择识别模型</div>
+    <div class="dialog-sub" id="modelSelectCount">已选择 0 张图片</div>
+    <div class="dialog-btns">
+      <button id="btnModelAncient" class="btn btn-gold">📜 古籍AI识别</button>
+      <button id="btnModelStandard" class="btn btn-gold">🔍 正楷AI识别</button>
+      <button id="btnModelCancel" class="btn btn-ghost">取消</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>window.OCR_API_DEFAULT = "{{ ocr_api }}";</script>
+<script src="{{ url_for('static', filename='js/ocr.js') }}"></script>
+{% endblock %}

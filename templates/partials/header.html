@@ -1,0 +1,28 @@
+<!-- ==================== 机构条 ==================== -->
+{% if site.institution %}
+<div class="inst-bar">
+  {% for name in site.institution %}
+    <span>{{ name }}</span>{% if not loop.last %}<span class="dot">·</span>{% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- ==================== 主导航 ==================== -->
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="{{ url_for('portal.index') }}">
+      <div class="brand-mark"><span>{{ site.brand_mark }}</span></div>
+      <div class="brand-text">
+        <div class="brand-cn">{{ site.brand_cn }}</div>
+        <div class="brand-en">{{ site.brand_en }}</div>
+      </div>
+    </a>
+
+    <nav class="nav">
+      {% for item in nav_items %}
+      <a href="{{ url_for(item.endpoint) }}"
+         class="{% if item.key == active_nav %}is-active{% endif %}{% if item.locked %} is-locked{% endif %}">{{ item.name }}</a>
+      {% endfor %}
+    </nav>
+  </div>
+</header>

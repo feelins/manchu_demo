@@ -1,0 +1,267 @@
+/* ============================================================
+   古籍 OCR 模块样式
+   全部沿用门户设计令牌（金 / 墨蓝 / 墨绿 / 米白），不引入新色板
+   依赖：css/design-token.css + css/base.css
+   ============================================================ */
+
+.ocr-section{padding-top:40px;}
+
+/* ---------- 工作区外框 ---------- */
+.ocr-app{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow-sm);
+  overflow:hidden;
+}
+
+/* ============================================================
+   1. 工具栏
+   ============================================================ */
+.ocr-toolbar{
+  background:linear-gradient(180deg,#fff,var(--paper));
+  padding:12px 16px;
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  border-bottom:1px solid var(--line);
+  box-shadow:0 1px 0 rgba(201,162,39,.18);
+}
+.ocr-toolbar .divider{width:1px;height:20px;background:var(--line);margin:0 4px;}
+.ocr-toolbar .spacer{flex:1;}
+
+.btn{
+  padding:6px 14px;border-radius:8px;cursor:pointer;
+  font-size:13px;font-family:var(--sans);
+  border:1px solid var(--line);
+  background:#fff;color:var(--text-2);
+  transition:background .22s,color .22s,border-color .22s,box-shadow .22s,transform .22s;
+}
+.btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:var(--shadow-sm);}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.6);}
+
+.btn-primary{
+  background:linear-gradient(135deg,var(--ink-4),var(--ink-2));
+  border-color:var(--ink-4);color:var(--gold-pale);
+}
+.btn-primary:hover:not(:disabled){background:linear-gradient(135deg,var(--ink-2),var(--ink));}
+
+.btn-gold{
+  background:linear-gradient(135deg,var(--gold),#a8861d);
+  border-color:var(--gold);color:#fff;
+}
+.btn-gold:hover:not(:disabled){box-shadow:0 2px 10px rgba(201,162,39,.45);}
+
+.btn-ink{
+  background:linear-gradient(135deg,var(--ink-3),var(--ink));
+  border-color:var(--ink-3);color:var(--gold-pale);
+}
+
+.btn-green{
+  background:linear-gradient(135deg,var(--green),var(--green-dark));
+  border-color:var(--green);color:#fff;
+}
+.btn-green.active{box-shadow:0 0 0 2px rgba(46,125,90,.35);}
+
+.btn-outline{
+  background:rgba(201,162,39,.08);
+  border-color:var(--gold-dim);color:#8b6914;font-weight:700;
+}
+.btn-outline:hover:not(:disabled){background:rgba(201,162,39,.16);}
+
+.btn-ghost{background:var(--paper);color:var(--text-2);}
+.btn-ghost:hover:not(:disabled){background:#ece5d8;}
+
+/* 表单控件 */
+.ocr-toolbar .field{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-3);}
+.ocr-toolbar .field select,
+.ocr-toolbar .field input{
+  padding:4px 8px;border:1px solid var(--line);border-radius:6px;
+  font-size:12px;background:#fff;color:var(--text);
+  font-family:var(--sans);
+}
+.ocr-toolbar .field-server input{width:170px;}
+
+.status-pill{
+  font-size:12px;color:var(--text-2);
+  background:var(--paper);border:1px solid var(--line);
+  padding:4px 12px;border-radius:100px;white-space:nowrap;
+}
+
+/* ============================================================
+   2. 空状态
+   ============================================================ */
+.ocr-empty{
+  padding:64px 24px;text-align:center;color:var(--text-3);
+  background:
+    radial-gradient(600px 200px at 50% 0%,rgba(201,162,39,.07),transparent 70%),
+    var(--cream);
+}
+.ocr-empty-mark{
+  font-family:var(--manju);
+  font-size:34px;color:var(--gold);opacity:.7;margin-bottom:16px;
+}
+.ocr-empty p{font-size:13.5px;line-height:2;}
+.ocr-empty b{color:var(--ink-3);font-weight:600;}
+.ocr-empty-note{margin-top:6px;font-size:12px;color:var(--text-3);}
+
+/* ============================================================
+   3. 主工作区
+   ============================================================ */
+.ocr-main{
+  display:flex;
+  height:640px;
+  max-height:calc(100vh - 260px);
+  min-height:420px;
+  overflow:hidden;
+}
+
+/* 左：原图（深色底衬托古籍扫描件） */
+.ocr-left{
+  width:40%;min-width:200px;max-width:75%;
+  background:linear-gradient(180deg,#23233d 0%,var(--ink-3) 60%,var(--ink) 100%);
+  display:flex;flex-direction:column;align-items:center;
+  padding:16px;overflow:auto;
+  border-right:1px solid var(--gold-dim);
+}
+.ocr-left-head{
+  font-size:11.5px;letter-spacing:.20em;color:var(--gold);
+  text-transform:uppercase;margin-bottom:12px;align-self:flex-start;
+}
+.ocr-left img{
+  max-height:calc(100% - 28px);max-width:100%;
+  border:1px solid rgba(201,162,39,.35);border-radius:6px;
+  box-shadow:0 6px 20px rgba(0,0,0,.45);
+}
+
+/* 拖拽分隔条 */
+.ocr-resizer{
+  width:8px;flex-shrink:0;cursor:col-resize;
+  background:linear-gradient(180deg,var(--paper),#e6dfd0);
+  border-left:1px solid var(--line);border-right:1px solid var(--line);
+  transition:background .2s;
+}
+.ocr-resizer:hover{background:linear-gradient(180deg,var(--gold-light),var(--gold));}
+
+/* 右：识别结果 */
+.ocr-right{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--cream);}
+.ocr-right-head{
+  padding:12px 16px;font-size:11.5px;letter-spacing:.20em;
+  color:var(--gold);text-transform:uppercase;
+  border-bottom:1px solid var(--line);background:#fff;
+}
+.columns-container{
+  flex:1;display:flex;flex-direction:row;align-items:flex-start;
+  gap:8px;padding:14px 12px 16px;
+  overflow-x:auto;overflow-y:hidden;
+  background:linear-gradient(180deg,#fff 0%,var(--cream) 100%);
+}
+.columns-container::-webkit-scrollbar{height:8px;}
+.columns-container::-webkit-scrollbar-track{background:var(--paper);border-radius:4px;}
+.columns-container::-webkit-scrollbar-thumb{
+  background:linear-gradient(90deg,var(--gold),var(--gold-light));border-radius:4px;
+}
+
+/* ---------- 单列卡片 ---------- */
+.column{
+  display:flex;flex-direction:row;
+  padding:16px 6px;
+  background:linear-gradient(180deg,#fff,var(--paper));
+  border:1px solid var(--line);border-radius:10px;
+  box-shadow:var(--shadow-sm);
+  transition:box-shadow .2s,border-color .2s;
+  flex-shrink:0;position:relative;min-height:80px;
+}
+.column:hover{box-shadow:var(--shadow-md);border-color:var(--gold-dim);}
+.column.chinese-column{
+  border-color:rgba(46,125,90,.45);
+  background:linear-gradient(180deg,#fff,rgba(46,125,90,.06));
+}
+
+/* 列缩略图 */
+.col-thumb{
+  position:relative;width:50px;height:600px;overflow:hidden;
+  flex-shrink:0;margin-right:6px;border-radius:4px;background:var(--paper);
+}
+.col-thumb img{
+  position:absolute;top:0;right:0;
+  width:50px;height:auto;display:block;max-height:100%;object-fit:contain;
+}
+.col-thumb.hidden{display:none !important;}
+
+/* 列正文（竖排） */
+.col-content{
+  writing-mode:vertical-lr;
+  display:flex;flex-direction:column;align-items:flex-start;
+  height:100%;width:auto;padding:8px 0;
+}
+.col-title{
+  font-family:var(--serif);color:var(--text-2);
+  margin-bottom:12px;font-size:16px;font-weight:700;letter-spacing:2px;
+  border-bottom:1px solid var(--line);padding-bottom:6px;
+  align-self:flex-start;flex-shrink:0;
+}
+.col-title.chinese-title{color:var(--green);border-bottom-color:rgba(46,125,90,.45);}
+.manju-text{
+  font-family:var(--manju);
+  color:var(--ink);font-size:46px;line-height:1.5;
+  height:100%;width:auto;min-width:40px;
+}
+.chinese-text{
+  font-family:var(--serif);
+  color:var(--green-dark);font-size:46px;line-height:1.5;
+  height:100%;width:auto;min-width:40px;
+}
+
+/* ============================================================
+   4. 弹层（批量进度 / 模型选择）
+   ============================================================ */
+#batchOverlay,#modelSelectOverlay{
+  display:none;position:fixed;inset:0;z-index:9999;
+  background:rgba(15,22,38,.55);
+  justify-content:center;align-items:center;
+}
+#batchOverlay.active,#modelSelectOverlay.active{display:flex;}
+
+.dialog-box{
+  background:#fff;border-radius:16px;
+  padding:28px 32px;min-width:340px;text-align:center;
+  box-shadow:var(--shadow-lg);
+  border:1px solid var(--gold-dim);
+}
+.dialog-title{
+  font-family:var(--serif);font-size:18px;font-weight:700;
+  color:var(--ink-3);letter-spacing:.05em;margin-bottom:6px;
+}
+.dialog-sub{font-size:13px;color:var(--text-3);margin-bottom:20px;}
+.dialog-text{font-size:14px;color:var(--text-2);margin-bottom:8px;}
+.dialog-note{font-size:12px;color:var(--text-3);word-break:break-all;}
+.dialog-btns{display:flex;flex-direction:column;gap:10px;}
+.dialog-btns .btn{width:100%;padding:10px 20px;}
+
+.progress-bg{
+  width:100%;height:18px;background:var(--paper);
+  border:1px solid var(--line);border-radius:100px;overflow:hidden;margin-bottom:12px;
+}
+.progress-fill{
+  height:100%;width:0%;
+  background:linear-gradient(90deg,var(--green),var(--gold),var(--gold-light));
+  transition:width .3s ease;
+}
+
+/* ============================================================
+   5. 响应式
+   ============================================================ */
+@media (max-width:1080px){
+  .ocr-main{height:auto;max-height:none;flex-direction:column;}
+  .ocr-left{width:100%;max-width:100%;border-right:none;border-bottom:1px solid var(--gold-dim);}
+  .ocr-left img{max-height:46vh;}
+  .ocr-resizer{display:none;}
+  .ocr-right{min-height:520px;}
+  .col-thumb{height:480px;}
+}
+@media (max-width:760px){
+  .ocr-section{padding-top:24px;}
+  .ocr-toolbar{padding:10px 12px;gap:6px;}
+  .ocr-toolbar .spacer{display:none;}
+  .ocr-toolbar .field-server{width:100%;}
+  .ocr-toolbar .field-server input{width:100%;}
+}

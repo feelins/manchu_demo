@@ -1,0 +1,32 @@
+<!-- ==================== 页脚 ==================== -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="fb-cn">
+        通化师范学院<br>
+        {{ site.platform_name }}
+      </div>
+      <p>{{ site.footer_intro }}</p>
+    </div>
+
+    {% for col in footer_links %}
+    <div class="footer-col">
+      <h5>{{ col.title }}</h5>
+      <ul>
+        {% for link in col.links %}
+        <li>
+          <a href="{% if link.endpoint %}{{ url_for(link.endpoint) }}{% else %}{{ link.url or '#' }}{% endif %}"
+             {% if link.external %}target="_blank" rel="noreferrer"{% endif %}
+             {% if link.locked %}class="is-locked"{% endif %}>{{ link.name }}</a>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="footer-bottom">
+    <span>{{ site.partners }}</span>
+    <span>{{ site.copyright }}</span>
+  </div>
+</footer>

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}{{ module.name }} · {{ site.platform_name }}{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="section-head">
+    <div class="section-eyebrow">Coming Soon</div>
+    <h2 class="section-title">{{ module.name }}</h2>
+    <p class="section-desc">该模块正在收编接入中，门户外壳与路由已就绪。</p>
+  </div>
+
+  <div class="grid grid-3">
+    <div class="card">
+      <h3>模块状态</h3>
+      <p>端点 <code>{{ module.endpoint }}</code> 已注册，页面内容将在对应阶段填充。</p>
+      <div class="card-tags">
+        <span class="tag tag-gold">外壳已统一</span>
+        <span class="tag">待接入</span>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
