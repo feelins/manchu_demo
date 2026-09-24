@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}满汉双向翻译 · {{ site.platform_name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/translate.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="section translate-section">
+  <div class="section-head">
+    <div class="section-eyebrow">Translation</div>
+    <h2 class="section-title">满汉双向翻译</h2>
+    <p class="section-desc">
+      支持满语 ⇄ 汉语双向互译，可在三个模型间切换对照；中间栏依据满文规则把拉丁转写实时还原为传统满文竖排书写。
+      译文请求经门户代理转发至模型服务，页面不直连后端端口。
+    </p>
+  </div>
+
+  <div class="translate-app">
+    <!-- ==================== 服务未就绪提示（无任何模型在线时显示） ==================== -->
+    <div class="svc-banner" id="svcBanner" hidden>
+      <span>⚠️</span>
+      <div>
+        未检测到可用的翻译服务。本机当前未部署 8001 / 8003 / 8005 三个模型服务（原服务运行在 Windows 机，尚未迁移）；
+        若服务在其它机器上运行，可用环境变量指向它后重启门户，例如
+        <code>TRANSLATE_UPSTREAM_8003=http://host:8003</code>。
+      </div>
+    </div>
+
+    <!-- ==================== 方向 + 模型选择 ==================== -->
+    <div class="top-bar">
+      <button class="dir-btn active" id="btnMnc2Zho" onclick="window.setDirection('mnc2zho')">满语 → 汉语</button>
+      <span class="dir-arrow">⇄</span>
+      <button class="dir-btn" id="btnZho2Mnc" onclick="window.setDirection('zho2mnc')">汉语 → 满语</button>
+      <div class="model-selector">
+        <label for="modelSelect">模型：</label>
+        <select id="modelSelect">
+          {% for m in models %}
+          <option value="{{ m.key }}" data-label="{{ m.name }}"{% if m.key == default_model %} selected{% endif %}>{{ m.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <span class="svc-status">
+        <span class="status-dot wait" id="svcDot"></span><span id="svcText">检测中…</span>
+      </span>
+    </div>
+
+    <div class="app-body">
+      <div>
+        <div class="tri-panels">
+          <!-- ==================== 输入 ==================== -->
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-label">输入<span class="lang-tag manchu" id="inputLangTag">满语</span></span>
+              <div class="panel-actions">
+                <button class="icon-btn" onclick="window.fillDemo()" title="填入示例">✎</button>
+                <button class="icon-btn" onclick="window.clearInput()" title="清空">✕</button>
+              </div>
+            </div>
+            <textarea id="inputText" class="area" placeholder="请输入满语拉丁转写…"></textarea>
+            <div class="stats" id="inputStats">0 字符</div>
+          </div>
+
+          <!-- ==================== 中间栏：传统满文 ==================== -->
+          <div class="panel panel-middle">
+            <div class="panel-header">
+              <span class="panel-label">传统满文<span class="script-tag">Unicode</span></span>
+              <span class="font-status" id="fontStatus">检测中…</span>
+            </div>
+            <textarea id="middleText" class="manchu-view" readonly placeholder="拉丁转写将实时转为传统满文显示于此"></textarea>
+            <div class="stats" id="middleStats">0 字符</div>
+          </div>
+
+          <!-- ==================== 输出 ==================== -->
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-label">输出<span class="lang-tag chinese" id="outputLangTag">汉语</span></span>
+              <div class="panel-actions">
+                <button class="icon-btn" onclick="window.copyOutput()" title="复制">📋</button>
+              </div>
+            </div>
+            <textarea id="outputText" class="area" readonly placeholder="汉语翻译结果…"></textarea>
+            <div class="stats" id="outputStats">0 字符</div>
+          </div>
+        </div>
+
+        <!-- ==================== 操作栏 ==================== -->
+        <div class="act-bar">
+          <button class="act-btn" id="btnTranslate" onclick="window.doTranslate()">翻 译</button>
+          <button class="act-btn-ink" onclick="window.clearAll()">清空</button>
+          <button class="act-btn-ink" onclick="window.saveResult()">保存 TXT</button>
+          <span class="act-hint">
+            快捷键 <code>Ctrl+Enter</code> 翻译　|　中间栏同步于译文侧拉丁文本　|　
+            模型：<code>8003</code> LoRA-GGUF、<code>8001</code> GGUF Q8_0、<code>8005</code> llama-server + LoRA
+          </span>
+        </div>
+      </div>
+
+      <!-- ==================== 右侧信息栏 ==================== -->
+      <aside class="side-info">
+        <div class="side-title">系统状态</div>
+        <div class="info-item">
+          <div class="k">代理接口</div>
+          <div class="v">/api/translate/*</div>
+        </div>
+        <div class="info-item">
+          <div class="k">当前方向</div>
+          <div class="v" id="currentDirection">满语 → 汉语</div>
+        </div>
+        <div class="info-item">
+          <div class="k">模型版本</div>
+          <div class="v" id="modelVersionDisplay">—</div>
+        </div>
+        <div class="info-item">
+          <div class="k">中间栏</div>
+          <div class="v" id="middleStatus">等待拉丁满文…</div>
+        </div>
+        <div class="info-item">
+          <div class="k">满文字体</div>
+          <div class="v" id="fontInfo">检测中…</div>
+        </div>
+
+        <div class="hist-head">
+          <div class="side-title">历史记录</div>
+          <button class="hist-clear" onclick="window.clearHistory()">清空</button>
+        </div>
+        <div id="historyList"></div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  window.MODELS = {{ models|tojson }};
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/manju-rules.js') }}"></script>
+<script src="{{ url_for('static', filename='js/translate.js') }}"></script>
+{% endblock %}

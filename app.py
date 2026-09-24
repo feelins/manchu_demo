@@ -12,12 +12,13 @@ from flask import Flask, jsonify, render_template, request
 from config import (CAPABILITY_CARDS, CORPUS_STATS, FOOTER_LINKS, NAV_ITEMS,
                     SITE, TRACE_PIPELINES)
 from modules.ocr import ocr_api_bp, ocr_bp
+from modules.translate import translate_api_bp, translate_bp
 from modules.translit import translit_bp
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # 已接入真实蓝图的模块（其余仍为占位路由）
-REAL_MODULES = {"ocr", "translit"}
+REAL_MODULES = {"ocr", "translit", "translate"}
 
 # 各模块后端网关前缀（前端只用相对路径，由门户转发到真实服务）
 OCR_API_BASE = os.environ.get("OCR_API_BASE", "/api/ocr")
@@ -66,6 +67,8 @@ def create_app():
     app.register_blueprint(ocr_bp)        # 页面：/ocr/
     app.register_blueprint(ocr_api_bp)    # 接口：/api/ocr/（转发到 OCR 推理服务）
     app.register_blueprint(translit_bp)   # 页面：/translit/（纯前端，无需后端服务）
+    app.register_blueprint(translate_bp)      # 页面：/translate/
+    app.register_blueprint(translate_api_bp)  # 接口：/api/translate/（转发到三个翻译模型服务）
 
     # ---- 其余模块占位路由（保证导航与页脚链接可用） ----
     for item in NAV_ITEMS:
