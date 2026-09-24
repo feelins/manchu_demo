@@ -12,8 +12,10 @@
     <div class="section-eyebrow">Text-to-Speech</div>
     <h2 class="section-title">满语语音合成</h2>
     <p class="section-desc">
-      输入拉丁满文即可合成标准满语语音；左侧实时显示对应的传统满文竖排书写。
-      文本经规范化后转为 CMUdict 音素序列，合成结果提供在线播放、频谱图与音频下载。
+      输入<strong>传统满文</strong>或<strong>拉丁满文</strong>即可合成满语语音。
+      合成引擎只接受拉丁文本，因此检测到满文时会先用全站统一的转写规则自动转为拉丁
+      （与「文字转换」模块同源），再送引擎；左侧实时显示对应的传统满文竖排，可据此核对转写是否走样。
+      文本随后转为 CMUdict 音素序列，合成结果提供在线播放、频谱图与音频下载。
       本系统为单说话人固定参考音频，面向教学演示与研究展示。
     </p>
   </div>
@@ -52,10 +54,10 @@
       <div class="panel-right">
         <div>
           <label class="field-label" for="sourceText">
-            原文本<span class="tip">输入拉丁满文</span>
+            原文本<span class="tip">传统满文 或 拉丁满文均可</span>
           </label>
           <textarea id="sourceText" class="source-input" rows="4"
-                    placeholder="例如：si yabade tiyehebi yaba bu sin bou yabade bi ai tokso"></textarea>
+                    placeholder="拉丁：si yabade tiyehebi yaba bu sin bou yabade bi ai tokso&#10;满文：ᠰᡳ ᠶᠠᠪᠠᡩᡝ ᡨᡳᠶᡝᡥᡝᠪᡳ"></textarea>
           <div class="stats" id="sourceStats">0 字符</div>
         </div>
 
@@ -65,7 +67,7 @@
         </div>
 
         <div>
-          <label class="field-label" for="latinText">拉丁读音序列<span class="tip">规范化结果</span></label>
+          <label class="field-label" for="latinText">拉丁读音序列<span class="tip">实际送引擎的拉丁文本</span></label>
           <textarea id="latinText" class="readonly-out" rows="2" readonly></textarea>
         </div>
 

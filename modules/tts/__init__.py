@@ -25,6 +25,7 @@
 
 import mimetypes
 import os
+import re
 import urllib.error
 import urllib.request
 
@@ -76,6 +77,24 @@ def _upstream_error(e, what):
     return jsonify({"error": f"{what}失败", "detail": str(e)}), 500
 
 
+# 上游只接受拉丁满文：其音素转换器的分词正则是 [a-z']+，传统满文会被整段跳过，
+# 实测直接喂满文返回 cmudict_tokens: []（空音素 → 合成出空音频），且不报错。
+# 前端 tts.js 会先用 manju-rules.js 转写；这里是兜底，避免 curl / 脚本等调用方
+# 静默拿到空结果却不知原因（不在此处代转，以免规则的 Python 实现出现第二份）。
+MANJU_SCRIPT_RE = re.compile("[" + chr(0x1800) + "-" + chr(0x18AF) + chr(0x202F) + chr(0x200D) + "]")
+
+
+def _reject_manchu_script(text):
+    """输入含传统满文字符时，返回明确的 400（而不是让上游静默返回空音素）。"""
+    if MANJU_SCRIPT_RE.search(text or ""):
+        return jsonify({
+            "error": "TTS 服务只接受拉丁满文",
+            "detail": "输入中检测到传统满文字符；上游音素转换器处理不了，会返回空音素。",
+            "hint": "请先转写为拉丁满文（可用 /translit/，或前端 static/js/manju-rules.js 的 manju2latin）。",
+        }), 400
+    return None
+
+
 def _rewrite_media_url(url):
     """`/generated/x.wav` -> `/api/tts/media/x.wav`（只保留文件名，避免路径穿越）"""
     if not url:
@@ -103,6 +122,10 @@ def convert():
     if not text:
         return jsonify({"error": "请输入满语文本"}), 400
 
+    bad = _reject_manchu_script(text)
+    if bad:
+        return bad
+
     try:
         status, body, _ = _forward("/api/convert", {"text": text}, timeout=30)
     except Exception as e:
@@ -123,6 +146,10 @@ def synthesize():
     text = (payload.get("text") or "").strip()
     if not text:
         return jsonify({"error": "请输入满语文本"}), 400
+
+    bad = _reject_manchu_script(text)
+    if bad:
+        return bad
 
     try:
         status, body, _ = _forward("/api/synthesize", {"text": text})

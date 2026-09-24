@@ -41,11 +41,26 @@
     }
     function toast(msg) { log(msg); }
 
+    // ==================== 满文 → 拉丁 自动转写 ====================
+    // 上游 TTS 只认拉丁满文：其 g2p 分词正则是 [a-z']+，直接喂传统满文时
+    // 一个词都匹配不到，实测返回 cmudict_tokens: []（空音素 → 合成出空音频）。
+    // 因此送上游之前，先用全站公共规则库把满文转写为拉丁（与 /translit/ 同一套规则，
+    // 已实测：ᠰᡳ ᠶᠠᠪᠠᡩᡝ → si yabade，音素与手工输入拉丁完全一致）。
+    // 满文字符区块 U+1800–U+18AF，另含 U+202F（窄空格，用于 "-i"）与 U+200D（ZWJ）
+    const MANJU_RE = new RegExp('[\\u1800-\\u18AF\\u202F\\u200D]');
+
+    function toLatin(text) {
+        return MANJU_RE.test(text) ? window.ManjuRules.manju2latin(text) : text;
+    }
+
     // ==================== 传统满文实时预览 ====================
+    // 左侧始终显示「规范化拉丁」对应的满文，与右侧互为镜像：
+    // 输入满文 → 转拉丁 → 再回满文，正好可肉眼校验转写是否走样。
     function updateManchuScript() {
         const val = el.source.value || '';
-        el.manchu.value = val.trim() ? window.ManjuRules.latin2manju(val) : '';
-        el.sourceStats.textContent = val.length + ' 字符';
+        el.manchu.value = val.trim() ? window.ManjuRules.latin2manju(toLatin(val)) : '';
+        el.sourceStats.textContent = val.length + ' 字符' +
+            (MANJU_RE.test(val) ? '（传统满文 → 将自动转写为拉丁）' : '');
     }
 
     // ==================== 与上游通信 ====================
@@ -87,8 +102,10 @@
 
     // ==================== 文本转化 ====================
     el.btnConvert.addEventListener('click', async function () {
-        const text = el.source.value.trim();
-        if (!text) { toast('请输入文本后再转化'); return; }
+        const raw = el.source.value.trim();
+        if (!raw) { toast('请输入文本后再转化'); return; }
+        const text = toLatin(raw);
+        if (text !== raw) log('检测到传统满文，已自动转写为拉丁：' + text);
         setBusy(el.btnConvert, true, '转化中…');
         log('正在转化文本（原文 → 拉丁规范化 → CMUdict）…');
         try {
@@ -104,8 +121,10 @@
 
     // ==================== 语音合成 ====================
     el.btnSynthesize.addEventListener('click', async function () {
-        const text = el.source.value.trim();
-        if (!text) { toast('请输入文本后再合成'); return; }
+        const raw = el.source.value.trim();
+        if (!raw) { toast('请输入文本后再合成'); return; }
+        const text = toLatin(raw);
+        if (text !== raw) log('检测到传统满文，已自动转写为拉丁：' + text);
         setBusy(el.btnSynthesize, true, '合成中…');
         el.btnConvert.disabled = true;
         const t0 = Date.now();
