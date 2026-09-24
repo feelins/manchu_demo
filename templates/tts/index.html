@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}满语语音合成 · {{ site.platform_name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tts.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="section tts-section">
+  <div class="section-head">
+    <div class="section-eyebrow">Text-to-Speech</div>
+    <h2 class="section-title">满语语音合成</h2>
+    <p class="section-desc">
+      输入拉丁满文即可合成标准满语语音；左侧实时显示对应的传统满文竖排书写。
+      文本经规范化后转为 CMUdict 音素序列，合成结果提供在线播放、频谱图与音频下载。
+      本系统为单说话人固定参考音频，面向教学演示与研究展示。
+    </p>
+  </div>
+
+  <div class="tts-app">
+    <!-- ==================== 服务未连接提示 ==================== -->
+    <div class="svc-banner" id="svcBanner" hidden>
+      <span>⚠️</span>
+      <div>
+        未检测到 TTS 推理服务。请在 <code>/home/leyesi/shaopf/manchu_TTS</code> 启动
+        <code>python app.py</code>（端口 7868）；若服务在其它机器，可用
+        <code>TTS_UPSTREAM=http://host:7868</code> 指向它后重启门户。
+      </div>
+    </div>
+
+    <!-- ==================== 顶部条 ==================== -->
+    <div class="top-bar">
+      <span class="svc-status">
+        <span class="status-dot wait" id="svcDot"></span><span id="svcText">检测中…</span>
+      </span>
+      <button class="icon-btn" id="btnDemo">填入示例</button>
+      <button class="icon-btn" id="btnClear">清空</button>
+      <button class="icon-btn" id="btnDownload">下载音频</button>
+    </div>
+
+    <!-- ==================== 主区 ==================== -->
+    <div class="demo-body">
+      <!-- 左：传统满文竖排 -->
+      <div class="panel-left">
+        <div class="panel-left-label">传统满文</div>
+        <textarea id="manchuScriptDisplay" class="manchu-view"
+                  placeholder="此处实时显示传统满文" readonly></textarea>
+      </div>
+
+      <!-- 右：操作区 -->
+      <div class="panel-right">
+        <div>
+          <label class="field-label" for="sourceText">
+            原文本<span class="tip">输入拉丁满文</span>
+          </label>
+          <textarea id="sourceText" class="source-input" rows="4"
+                    placeholder="例如：si yabade tiyehebi yaba bu sin bou yabade bi ai tokso"></textarea>
+          <div class="stats" id="sourceStats">0 字符</div>
+        </div>
+
+        <div class="actions">
+          <button class="btn" id="btnConvert">文本转化</button>
+          <button class="btn btn-ink" id="btnSynthesize">合成语音</button>
+        </div>
+
+        <div>
+          <label class="field-label" for="latinText">拉丁读音序列<span class="tip">规范化结果</span></label>
+          <textarea id="latinText" class="readonly-out" rows="2" readonly></textarea>
+        </div>
+
+        <div>
+          <label class="field-label" for="cmuText">CMUdict 音素序列</label>
+          <textarea id="cmuText" class="readonly-out" rows="2" readonly></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 结果区（合成成功后显示） ==================== -->
+    <div class="result-area" id="resultArea" hidden>
+      <div class="result-title">合成结果</div>
+      <p class="audio-line"><strong>音频：</strong> <a id="audioUrl" href="#" target="_blank" rel="noreferrer"></a></p>
+      <audio id="audioPlayer" class="audio-player" controls></audio>
+      <div class="spec-wrap">
+        <img id="specImage" alt="合成音频频谱图" />
+        <div class="spec-cap">梅尔频谱图（spectrogram）</div>
+      </div>
+    </div>
+
+    <pre class="logbox" id="logBox"></pre>
+
+    <div class="tts-note">
+      快捷键 <code>Ctrl+Enter</code> 直接合成　|　左下日志区显示每次请求的状态与耗时　|　
+      首次合成需加载 GPT / SoVITS 模型，耗时较长，属正常现象　|　
+      传统满文由公共规则库 <code>manju-rules.js</code> 实时转换（与文字转换、翻译模块同源）
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/manju-rules.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tts.js') }}"></script>
+{% endblock %}
