@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}语料集 · {{ site.platform_name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/corpus.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="section corpus-section">
+  <div class="section-head">
+    <div class="section-eyebrow">Corpus</div>
+    <h2 class="section-title">语料集</h2>
+    <p class="section-desc">
+      汇集古籍 OCR、满汉平行语料、语音合成与识别等多类数据资源。
+      为保护数据资产，本站<strong>只展示少量样例切片</strong>（当前共
+      {{ (total_bytes / 1024) | round(1) }} KB），用于说明数据形态与标注质量；
+      全量数据不在此分发，需走申请流程。
+      每个规模数字均标注统计口径，<strong>未核实的一律显示占位符</strong>，不虚报。
+    </p>
+  </div>
+
+  {% if not has_any %}
+  <div class="corpus-empty">
+    <strong>切片尚未生成。</strong>
+    请先运行 <code>python3 scripts/make_corpus_samples.py</code>
+    （从本机原始语料抽取少量样例到 <code>static/corpus/</code>）。
+  </div>
+  {% endif %}
+
+  <div class="corpus-grid">
+    {% for item in overview %}
+    <article class="corpus-card {% if not item.verified %}is-unverified{% endif %}">
+      <div class="corpus-card-head">
+        <span class="corpus-code">{{ item.code }}</span>
+        <span class="corpus-manju">{{ item.manju }}</span>
+      </div>
+
+      <h3 class="corpus-title">{{ item.title }}</h3>
+
+      <div class="corpus-scale">
+        {% if item.scale %}
+          <span class="scale-num">{{ item.scale }}</span>
+          <span class="badge badge-ok">已核实</span>
+        {% else %}
+          <span class="scale-num placeholder">—</span>
+          <span class="badge badge-wait">口径待确认</span>
+        {% endif %}
+      </div>
+
+      <p class="corpus-note">{{ item.note }}</p>
+
+      <ul class="corpus-slices">
+        {% for s in item.slices %}
+          {% set brief = slices.get(s) %}
+          <li>
+            {% if brief %}
+              {{ brief.name }}：{{ brief.count }} 条 ·
+              {{ (brief.bytes / 1024) | round(1) }} KB
+              <span class="slice-ver">{{ brief.version }}</span>
+            {% else %}
+              {{ s }}：切片未生成
+            {% endif %}
+          </li>
+        {% else %}
+          <li class="muted">暂无切片</li>
+        {% endfor %}
+      </ul>
+
+      <div class="corpus-card-foot">
+        {% if item.endpoint %}
+          <a class="corpus-link" href="{{ url_for(item.endpoint) }}">查看样例 →</a>
+        {% else %}
+          <span class="corpus-link is-disabled">暂无样例</span>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+
+  <div class="corpus-meta">
+    <h3>口径与来源说明</h3>
+    <ul>
+      <li>切片由 <code>scripts/make_corpus_samples.py</code> 从本机原始语料<strong>等距抽样</strong>生成（结果确定、可复现），原始全量数据不入库。</li>
+      <li>「已核实」指本次按字节/文件数实测，与需求文档数字做过比对；未核实项保留 <code>—</code>，待数据负责人确认口径后更新。</li>
+      <li>语音类数据<strong>一身二用</strong>：0603 语音合成与 0604 语音识别是同一批 wav（目录批注「反向使用语音合成数据」），不重复计数。</li>
+      <li>平行语料为<strong>拉丁转写</strong>，页面上的传统满文由 <code>manju-rules.js</code> 反写生成，不等于原始文献字形。</li>
+    </ul>
+  </div>
+</section>
+{% endblock %}

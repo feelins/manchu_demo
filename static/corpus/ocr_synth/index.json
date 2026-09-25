@@ -1,0 +1,53 @@
+{
+  "name": "满文 OCR 训练数据（合成）",
+  "source_type": "图像 + 满文标注",
+  "version": "manju_170k",
+  "total_images": 173170,
+  "form": "满文标准字体渲染的合成行图（多字体）",
+  "annotation": "传统满文（合成时同步生成，标签文件带 BOM，已清洗）",
+  "license": "仅展示切片",
+  "source_path": "/home/leyesi/ocr/manju_170k",
+  "category": "ocr_synth",
+  "sample_count": 6,
+  "sample_bytes": 54219,
+  "stats_date": "2026-09-25",
+  "note": "展示切片，非全量数据；全量需走申请流程。",
+  "entries": [
+    {
+      "id": 1,
+      "image": "corpus/ocr_synth/000001.png",
+      "label": "ᠠᠪᡴᠠ ᠠᠪᡴᠠ ᡨᡳᠶᠠᠨ ᡠᠮᡝᠰᡳ ᡩᡝᠨ",
+      "bytes": 9037
+    },
+    {
+      "id": 2,
+      "image": "corpus/ocr_synth/028862.png",
+      "label": "ᠯᡝᠪᡩᡝᡵᡝᡴᡝᠪᡳ ᠰᡝᠮᠪᡳ᠉ ᠮᡝᠯᡝᡵᠵᡝᠮᠪᡳ",
+      "bytes": 8752
+    },
+    {
+      "id": 3,
+      "image": "corpus/ocr_synth/057724.png",
+      "label": "ᠪᠠᠨᠵᡳᠮᠪᡳ᠈ ᠪᠣᠴᠣ ᠰᠣᡥᠣᡴᠣᠨ ᠪᡳᠮᡝ",
+      "bytes": 8632
+    },
+    {
+      "id": 4,
+      "image": "corpus/ocr_synth/086586.png",
+      "label": "ᠯᡳᡠᡩᠠᡳ ᠪᡠᡴᠰᡳᡥᠠ ᠴᠣᡠᡥᠠ ᡳᠩ ᡩᡝ",
+      "bytes": 9364
+    },
+    {
+      "id": 5,
+      "image": "corpus/ocr_synth/115447.png",
+      "label": "ᡨᠠᡶᡠᠯᠠᠮᡝ ᡥᡝᠨᡩᡠᠮᡝ᠈ ᡥᠠᠨ  ᡳ ᡝᠴᡳᡴᡝ",
+      "bytes": 9017
+    },
+    {
+      "id": 6,
+      "image": "corpus/ocr_synth/144309.png",
+      "label": "ᡴᡠᠩ ᠮᡳᠩ  ᠨᡳ ᠪᡠᡥᡝ ᠨᡳᡵᡠᡤᠠᠨ ᠪᡝ",
+      "bytes": 9417
+    }
+  ]
+}

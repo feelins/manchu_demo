@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}满汉平行语料 · 语料集 · {{ site.platform_name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/corpus.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="section corpus-section">
+  <div class="corpus-subhead">
+    <h2 class="section-title">满汉平行语料 <span class="corpus-code">0602</span></h2>
+    <a class="corpus-back" href="{{ url_for('corpus.index') }}">← 返回语料集</a>
+  </div>
+
+  <div class="corpus-tip">
+    原始语料为<strong>双行对照</strong>（奇数行拉丁满文 / 偶数行汉文）。
+    第三列是原始拉丁转写；第四列的传统满文由 <code>manju-rules.js</code>
+    <strong>反写生成，仅作参考，不等同于古籍原始字形</strong>。
+    此处展示 {{ data.entries | length if data else 0 }} 条切片，全量不在此分发。
+  </div>
+
+  {% if data %}
+  <div class="corpus-subhead">
+    <input id="filter" class="parallel-filter" type="search"
+           placeholder="按汉文或拉丁满文过滤…">
+    <span class="parallel-count">
+      切片 {{ data.entries | length }} 条 · 全量 {{ data.total_pairs }} 句对
+      （{{ data.total_lines }} 行）· 版本 {{ data.version }}
+    </span>
+  </div>
+
+  <table class="parallel-table" id="pairTable">
+    <thead>
+      <tr>
+        <th class="col-id">#</th>
+        <th>汉文</th>
+        <th>拉丁满文（原始）</th>
+        <th>传统满文（反写参考）</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in data.entries %}
+      <tr>
+        <td class="col-id">{{ e.id }}</td>
+        <td>{{ e.zh }}</td>
+        <td class="cell-latin">{{ e.manju_latin }}</td>
+        <td class="cell-manju" data-latin="{{ e.manju_latin }}"></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="corpus-empty">
+    <strong>平行语料切片未生成。</strong>
+    请运行 <code>python3 scripts/make_corpus_samples.py parallel</code>。
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/manju-rules.js') }}"></script>
+<script src="{{ url_for('static', filename='js/corpus.js') }}"></script>
+{% endblock %}

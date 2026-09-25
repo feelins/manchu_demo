@@ -1,0 +1,168 @@
+{
+  "name": "满汉平行语料",
+  "source_type": "文本",
+  "version": "all1+2+3",
+  "total_lines": 98038,
+  "total_pairs": 49019,
+  "form": "双行对照：奇数行拉丁满文 / 偶数行汉文",
+  "annotation": "拉丁转写（非传统满文原文）",
+  "license": "仅展示切片",
+  "source_path": "/home/leyesi/shaopf/服务器配置相关/平台框架/平台框架/06语料集/0602满汉双向翻译训练数据行数/不可展示全部 仅展示几十条即可  all1+2+3.txt",
+  "category": "parallel",
+  "sample_count": 30,
+  "sample_bytes": 0,
+  "stats_date": "2026-09-25",
+  "note": "展示切片，非全量数据；全量需走申请流程。",
+  "entries": [
+    {
+      "id": 1,
+      "manju_latin": "an -i gisun de amtan be sara bithe -i xutuqin",
+      "zh": "庸言知旨序"
+    },
+    {
+      "id": 2,
+      "manju_latin": "erdeken -i milaraka de sain.",
+      "zh": "早些撇开了好。"
+    },
+    {
+      "id": 3,
+      "manju_latin": "baibi taxaraburahv qalaburahv seme,",
+      "zh": "只恐怕差错了，"
+    },
+    {
+      "id": 4,
+      "manju_latin": "yasa faha tokome mohoburengge ainaha youni uru ni,",
+      "zh": "赶尽杀绝未必都行的是，"
+    },
+    {
+      "id": 5,
+      "manju_latin": "ai oqibe emu gosire gisun bureu.",
+      "zh": "可怎么的呢求给个好话儿！"
+    },
+    {
+      "id": 6,
+      "manju_latin": "beleme habxara be nakabufi, mergen sain be youni oburengge.",
+      "zh": "息诬告 以全善良。"
+    },
+    {
+      "id": 7,
+      "manju_latin": "duin biyai iqe ilan de, auhan -i dureng efu de jinong seme gebu buhe,",
+      "zh": "四月初三日，赐敖汉部杜棱额驸以济浓名号。"
+    },
+    {
+      "id": 8,
+      "manju_latin": "ilaqi jergi tafaka dolixan de aqan beiguwan obuha,",
+      "zh": "多礼善，第三登城，合授一备御职，"
+    },
+    {
+      "id": 9,
+      "manju_latin": "niyalma nadanjuta juru,",
+      "zh": "各赐人七十对、"
+    },
+    {
+      "id": 10,
+      "manju_latin": "orin ninggun de, sun dureng monggo lama, han de aqame jifi buhengge, emu suje, juwan moqin, menggun -i dongmo emke, emu loho, orin kiyan dambagu buhe.",
+      "zh": "二十六日，孙杜棱蒙古喇嘛来见汗，赐缎一、毛青布十、银茶桶一、腰刀一、烟二十刀。"
+    },
+    {
+      "id": 11,
+      "manju_latin": "ilan niyalma kiyou be doume jihe bihe,",
+      "zh": "有三人过桥来，"
+    },
+    {
+      "id": 12,
+      "manju_latin": "suwe neneme dahaha sain,",
+      "zh": "尔等先来归降，甚善。"
+    },
+    {
+      "id": 13,
+      "manju_latin": "duin morin gajiha seme, ilaqi jergi jalan -i janggin be jai jergi jalan -i janggin obuha,",
+      "zh": "获马四以还。因擢三等甲喇章京为二等甲喇章京，"
+    },
+    {
+      "id": 14,
+      "manju_latin": "erihe nirui janggin,",
+      "zh": "额里和系牛录章京，"
+    },
+    {
+      "id": 15,
+      "manju_latin": "hiyouxulara doro, bi kemuni hafu ulhire unde.",
+      "zh": "孝顺的道理，我还不深晓得呢，"
+    },
+    {
+      "id": 16,
+      "manju_latin": "yasa antaka.",
+      "zh": "目力若何？"
+    },
+    {
+      "id": 17,
+      "manju_latin": "bonggo",
+      "zh": "头一个"
+    },
+    {
+      "id": 18,
+      "manju_latin": "fasilan",
+      "zh": "叉股事"
+    },
+    {
+      "id": 19,
+      "manju_latin": "tas tis seme",
+      "zh": "箭擦刽著声"
+    },
+    {
+      "id": 20,
+      "manju_latin": "asihaki",
+      "zh": "少相"
+    },
+    {
+      "id": 21,
+      "manju_latin": "tuksimbi",
+      "zh": "惶恐"
+    },
+    {
+      "id": 22,
+      "manju_latin": "hadala you",
+      "zh": "马嚼疮"
+    },
+    {
+      "id": 23,
+      "manju_latin": "fithembi",
+      "zh": "弹背式骨"
+    },
+    {
+      "id": 24,
+      "manju_latin": "falangga dengjan",
+      "zh": "戳灯"
+    },
+    {
+      "id": 25,
+      "manju_latin": "jiramikan",
+      "zh": "略厚"
+    },
+    {
+      "id": 26,
+      "manju_latin": "xanyan selbete",
+      "zh": "一枝蒿"
+    },
+    {
+      "id": 27,
+      "manju_latin": "felhen",
+      "zh": "牲口草棚"
+    },
+    {
+      "id": 28,
+      "manju_latin": "faxu",
+      "zh": "白塘"
+    },
+    {
+      "id": 29,
+      "manju_latin": "te biqibe neneme zungdu, siyvn fu bihe urse, ememungge dosi nantuhvn ehe sui be isabume yabuhangge.",
+      "zh": "即今原任总督、巡抚等或有多行贪婪积恶者。"
+    },
+    {
+      "id": 30,
+      "manju_latin": "g 'aldan qering, jai gisureki sehe.",
+      "zh": "噶尔丹策零言，再议。等语。"
+    }
+  ]
+}

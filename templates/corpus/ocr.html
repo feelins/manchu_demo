@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}满文 OCR 训练数据 · 语料集 · {{ site.platform_name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/corpus.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="section corpus-section">
+  <div class="corpus-subhead">
+    <h2 class="section-title">满文 OCR 训练数据 <span class="corpus-code">0601</span></h2>
+    <a class="corpus-back" href="{{ url_for('corpus.index') }}">← 返回语料集</a>
+  </div>
+
+  <div class="corpus-tip">
+    每张图配一份<strong>传统满文人工标注</strong>，即 OCR 训练的一对样本。
+    「真实古籍」来自 <code>ancient_4k_v7</code> 扫描切分图；「合成」由标准满文字体渲染生成（多字体）。
+    两类各展示 {{ real.entries | length if real else 0 }} / {{ synth.entries | length if synth else 0 }} 条切片。
+  </div>
+
+  {% if real or synth %}
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="real">真实古籍</button>
+    <button class="tab-btn" data-tab="synth">合成</button>
+  </div>
+
+  {% if real %}
+  <div class="tab-panel" id="tab-real">
+    <div class="img-grid">
+      {% for e in real.entries %}
+      <figure class="img-card">
+        <img src="{{ url_for('static', filename=e.image) }}" alt="{{ e.label }}" loading="lazy">
+        <figcaption class="cap">
+          {{ e.image.split('/')[-1] }} · {{ (e.bytes / 1024) | round(1) }} KB
+          <span class="label" dir="ltr">{{ e.label }}</span>
+        </figcaption>
+      </figure>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if synth %}
+  <div class="tab-panel" id="tab-synth" hidden>
+    <div class="img-grid">
+      {% for e in synth.entries %}
+      <figure class="img-card">
+        <img src="{{ url_for('static', filename=e.image) }}" alt="{{ e.label }}" loading="lazy">
+        <figcaption class="cap">
+          {{ e.image.split('/')[-1] }} · {{ (e.bytes / 1024) | round(1) }} KB
+          <span class="label" dir="ltr">{{ e.label }}</span>
+        </figcaption>
+      </figure>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+  {% else %}
+  <div class="corpus-empty">
+    <strong>OCR 图文切片未生成。</strong>
+    请运行 <code>python3 scripts/make_corpus_samples.py ocr_real ocr_synth</code>。
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/corpus.js') }}"></script>
+{% endblock %}

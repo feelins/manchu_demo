@@ -1,0 +1,393 @@
+/* ============================================================
+   语料集 · 页面样式
+   仅定义本页特有组件，颜色/间距统一走 design-token.css 变量
+   ============================================================ */
+
+.corpus-section {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 40px 24px 72px;
+}
+
+/* ---------- 空状态 ---------- */
+.corpus-empty {
+    padding: 18px 20px;
+    border-radius: 12px;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #9a3412;
+    font-size: 14px;
+    line-height: 1.7;
+    margin-bottom: 28px;
+}
+
+/* ---------- 五类卡片 ---------- */
+.corpus-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 18px;
+}
+
+.corpus-card {
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    border-radius: 14px;
+    background: var(--surface, #fff);
+    border: 1px solid var(--line, #e5e7eb);
+    box-shadow: 0 1px 2px rgba(16, 24, 40, .04);
+    transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.corpus-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(16, 24, 40, .08);
+}
+
+.corpus-card.is-unverified {
+    background: #fcfcfd;
+}
+
+.corpus-card-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.corpus-code {
+    font-size: 12px;
+    letter-spacing: .08em;
+    color: var(--muted, #6b7280);
+    font-variant-numeric: tabular-nums;
+}
+
+.corpus-manju {
+    font-family: "Buleku", serif;
+    font-size: 18px;
+    color: var(--gold, #b08d3f);
+    direction: ltr;
+}
+
+.corpus-title {
+    margin: 0 0 12px;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink, #1f2937);
+}
+
+.corpus-scale {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.scale-num {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink, #1f2937);
+    font-variant-numeric: tabular-nums;
+}
+
+.scale-num.placeholder {
+    color: var(--muted, #9ca3af);
+}
+
+.badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.badge-ok {
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+}
+
+.badge-wait {
+    background: #f3f4f6;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+}
+
+.corpus-note {
+    margin: 0 0 14px;
+    font-size: 13px;
+    line-height: 1.75;
+    color: var(--muted, #6b7280);
+}
+
+.corpus-slices {
+    list-style: none;
+    margin: 0 0 16px;
+    padding: 12px 0 0;
+    border-top: 1px dashed var(--line, #e5e7eb);
+    font-size: 12.5px;
+    color: var(--muted, #6b7280);
+    line-height: 1.9;
+}
+
+.slice-ver {
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: #f3f4f6;
+    font-size: 11px;
+}
+
+.corpus-slices .muted {
+    color: #9ca3af;
+}
+
+.corpus-card-foot {
+    margin-top: auto;
+}
+
+.corpus-link {
+    font-size: 13px;
+    color: var(--gold, #b08d3f);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.corpus-link:hover {
+    text-decoration: underline;
+}
+
+.corpus-link.is-disabled {
+    color: #9ca3af;
+    font-weight: 400;
+    cursor: default;
+}
+
+/* ---------- 口径说明 ---------- */
+.corpus-meta {
+    margin-top: 36px;
+    padding: 20px 22px;
+    border-radius: 12px;
+    background: #fafafa;
+    border: 1px solid var(--line, #e5e7eb);
+}
+
+.corpus-meta h3 {
+    margin: 0 0 10px;
+    font-size: 15px;
+    color: var(--ink, #1f2937);
+}
+
+.corpus-meta ul {
+    margin: 0;
+    padding-left: 20px;
+    font-size: 13px;
+    line-height: 1.9;
+    color: var(--muted, #6b7280);
+}
+
+/* ============================================================
+   分类页公共
+   ============================================================ */
+.corpus-subhead {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+}
+
+.corpus-back {
+    font-size: 13px;
+    color: var(--muted, #6b7280);
+    text-decoration: none;
+}
+
+.corpus-back:hover {
+    color: var(--gold, #b08d3f);
+}
+
+.corpus-tip {
+    padding: 10px 14px;
+    margin-bottom: 18px;
+    border-radius: 8px;
+    background: #f0f7ff;
+    border: 1px solid #cfe3fb;
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: #1e40af;
+}
+
+/* ---------- 平行语料表格 ---------- */
+.parallel-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border: 1px solid var(--line, #e5e7eb);
+    border-radius: 10px;
+    overflow: hidden;
+    font-size: 14px;
+}
+
+.parallel-table th,
+.parallel-table td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--line, #f1f2f4);
+    vertical-align: top;
+}
+
+.parallel-table th {
+    background: #fafafa;
+    font-size: 12.5px;
+    color: var(--muted, #6b7280);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.parallel-table tr:last-child td {
+    border-bottom: none;
+}
+
+.parallel-table .col-id {
+    width: 48px;
+    color: #9ca3af;
+    font-variant-numeric: tabular-nums;
+}
+
+.cell-latin {
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 13px;
+    color: #374151;
+}
+
+.cell-manju {
+    font-family: "Buleku", serif;
+    font-size: 17px;
+    color: var(--ink, #1f2937);
+}
+
+.parallel-filter {
+    padding: 7px 12px;
+    border: 1px solid var(--line, #e5e7eb);
+    border-radius: 8px;
+    font-size: 13px;
+    min-width: 220px;
+}
+
+.parallel-count {
+    font-size: 12.5px;
+    color: var(--muted, #6b7280);
+}
+
+/* ---------- OCR 图文 ---------- */
+.tab-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.tab-btn {
+    padding: 7px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--line, #e5e7eb);
+    background: #fff;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--muted, #6b7280);
+}
+
+.tab-btn.active {
+    background: var(--gold, #b08d3f);
+    border-color: var(--gold, #b08d3f);
+    color: #fff;
+    font-weight: 600;
+}
+
+.img-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+}
+
+.img-card {
+    border: 1px solid var(--line, #e5e7eb);
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.img-card img {
+    display: block;
+    width: 100%;
+    background: #fafafa;
+    border-bottom: 1px solid var(--line, #f1f2f4);
+}
+
+.img-card .cap {
+    padding: 10px 12px;
+    font-size: 12px;
+    color: var(--muted, #6b7280);
+}
+
+.img-card .label {
+    display: block;
+    margin-top: 4px;
+    font-family: "Buleku", serif;
+    font-size: 18px;
+    color: var(--ink, #1f2937);
+    word-break: break-all;
+}
+
+/* ---------- 语音 ---------- */
+.audio-list {
+    display: grid;
+    gap: 12px;
+}
+
+.audio-row {
+    display: grid;
+    grid-template-columns: 56px 1fr 260px;
+    gap: 14px;
+    align-items: center;
+    padding: 12px 14px;
+    border: 1px solid var(--line, #e5e7eb);
+    border-radius: 10px;
+    background: #fff;
+}
+
+.audio-row .idx {
+    color: #9ca3af;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.audio-row audio {
+    width: 100%;
+    height: 34px;
+}
+
+.audio-row .txt {
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 12.5px;
+    color: #374151;
+    word-break: break-word;
+}
+
+.audio-row .dur {
+    display: block;
+    margin-top: 3px;
+    font-size: 11.5px;
+    color: #9ca3af;
+}
+
+@media (max-width: 720px) {
+    .audio-row {
+        grid-template-columns: 40px 1fr;
+    }
+
+    .audio-row .txt {
+        grid-column: 1 / -1;
+    }
+}

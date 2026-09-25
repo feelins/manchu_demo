@@ -1,0 +1,54 @@
+{
+  "name": "满文 OCR 训练数据（真实古籍）",
+  "source_type": "图像 + 满文标注",
+  "version": "ancient_4k_v7",
+  "total_images": 17198,
+  "total_train_lines": 7739,
+  "form": "古籍扫描切分后的行图，附传统满文标注",
+  "annotation": "传统满文（人工校对）",
+  "license": "仅展示切片",
+  "source_path": "/home/leyesi/ancient_ocr_finetune/ancient_4k_v7/images_clean",
+  "category": "ocr_real",
+  "sample_count": 6,
+  "sample_bytes": 34205,
+  "stats_date": "2026-09-25",
+  "note": "展示切片，非全量数据；全量需走申请流程。",
+  "entries": [
+    {
+      "id": 1,
+      "image": "corpus/ocr_real/ja08027.png",
+      "label": "ᡤᡝᠮᡠ ᠠᡴᡡ ᠣᡥᠣ᠈",
+      "bytes": 4510
+    },
+    {
+      "id": 2,
+      "image": "corpus/ocr_real/ja15322.png",
+      "label": "ᠠᠨᡳᠶᠠ ᡳᠯᠠᠨ ᠪᡳᠶᠠᡳ",
+      "bytes": 5146
+    },
+    {
+      "id": 3,
+      "image": "corpus/ocr_real/ja11210.png",
+      "label": "ᠮᡳᠨᡳ ᠨᡠᡴᡨᡝ ᠪᡝ ᡤᠠᡳᡴᡳ ᠰᡝᠮᡝ",
+      "bytes": 6144
+    },
+    {
+      "id": 4,
+      "image": "corpus/ocr_real/ja02912.png",
+      "label": "ᡳᠨᡠ ᡝᠮᡠ ᠮᡠᡩᠠᠨ",
+      "bytes": 6687
+    },
+    {
+      "id": 5,
+      "image": "corpus/ocr_real/ja11100.png",
+      "label": "ᡝᠨᡩᡠᡵᡳᠩᡤᡝ ᡥᠠᠨ ᡝᠵᡝᠨ᠈ ᡶᡠᠴᡳᡥᡳ",
+      "bytes": 7149
+    },
+    {
+      "id": 6,
+      "image": "corpus/ocr_real/ja27907.png",
+      "label": "ᡝᡵᡝᠪᡝ ᡩᠣᡵᡤᡳ ᠶᠠᠮᡠᠨ  ᡳ",
+      "bytes": 4569
+    }
+  ]
+}

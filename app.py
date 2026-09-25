@@ -11,6 +11,7 @@ from flask import Flask, jsonify, render_template, request
 
 from config import (CAPABILITY_CARDS, CORPUS_STATS, FOOTER_LINKS, NAV_ITEMS,
                     SITE, TRACE_PIPELINES)
+from modules.corpus import corpus_api_bp, corpus_bp
 from modules.ocr import ocr_api_bp, ocr_bp
 from modules.translate import translate_api_bp, translate_bp
 from modules.translit import translit_bp
@@ -19,7 +20,7 @@ from modules.tts import tts_api_bp, tts_bp
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # 已接入真实蓝图的模块（其余仍为占位路由）
-REAL_MODULES = {"ocr", "translit", "translate", "tts"}
+REAL_MODULES = {"ocr", "translit", "translate", "tts", "corpus"}
 
 # 各模块后端网关前缀（前端只用相对路径，由门户转发到真实服务）
 OCR_API_BASE = os.environ.get("OCR_API_BASE", "/api/ocr")
@@ -72,6 +73,8 @@ def create_app():
     app.register_blueprint(translate_api_bp)  # 接口：/api/translate/（转发到三个翻译模型服务）
     app.register_blueprint(tts_bp)       # 页面：/tts/
     app.register_blueprint(tts_api_bp)   # 接口：/api/tts/（转发到 TTS 推理服务 + 音频回源）
+    app.register_blueprint(corpus_bp)       # 页面：/corpus/（语料集，只读切片，无外部依赖）
+    app.register_blueprint(corpus_api_bp)   # 接口：/api/corpus/（切片与规模统计）
 
     # ---- 其余模块占位路由（保证导航与页脚链接可用） ----
     for item in NAV_ITEMS:

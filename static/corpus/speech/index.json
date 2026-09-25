@@ -1,0 +1,70 @@
+{
+  "name": "满语语音语料",
+  "source_type": "音频 + 拉丁转写 + 音素对齐",
+  "version": "Manchu_data_v8 / manchu_align_v8",
+  "total_items": 2424,
+  "form": "wav（24kHz/16bit/单声道）+ 同名词文本 + TextGrid 对齐",
+  "annotation": "拉丁满文转写 + MFA 音素对齐",
+  "license": "仅展示切片（录音说话人授权待确认）",
+  "category": "speech",
+  "sample_count": 6,
+  "sample_bytes": 661648,
+  "stats_date": "2026-09-25",
+  "note": "展示切片，非全量数据；全量需走申请流程。",
+  "entries": [
+    {
+      "id": 1,
+      "audio": "corpus/speech/00000007.wav",
+      "text": "b u d a j e m b i t e r e",
+      "duration_sec": 2.76,
+      "sample_rate": 24000,
+      "bytes": 132576,
+      "usage": "TTS（文本→音频）与 ASR（音频→文本）共用同一批数据，不重复计数"
+    },
+    {
+      "id": 2,
+      "audio": "corpus/speech/00080179.wav",
+      "text": "a i r k e o m i m e l a u b d u o h o a i k a n j a k a g e m u g i s u r e m b i",
+      "duration_sec": 2.69,
+      "sample_rate": 24000,
+      "bytes": 129236,
+      "usage": "TTS（文本→音频）与 ASR（音频→文本）共用同一批数据，不重复计数"
+    },
+    {
+      "id": 3,
+      "audio": "corpus/speech/00080430.wav",
+      "text": "e r e b o u a m b a a i l a u b d u n iy a l m a t e b a d e t iy e h e b i",
+      "duration_sec": 2.02,
+      "sample_rate": 24000,
+      "bytes": 96998,
+      "usage": "TTS（文本→音频）与 ASR（音频→文本）共用同一批数据，不重复计数"
+    },
+    {
+      "id": 4,
+      "audio": "corpus/speech/00080665.wav",
+      "text": "s a i n j a k a a i n iy a l m a g e m u g i s u r e r e s a i n",
+      "duration_sec": 2.72,
+      "sample_rate": 24000,
+      "bytes": 130464,
+      "usage": "TTS（文本→音频）与 ASR（音频→文本）共用同一批数据，不重复计数"
+    },
+    {
+      "id": 5,
+      "audio": "corpus/speech/00080948.wav",
+      "text": "e r e e s a i n j a k a",
+      "duration_sec": 1.77,
+      "sample_rate": 24000,
+      "bytes": 84934,
+      "usage": "TTS（文本→音频）与 ASR（音频→文本）共用同一批数据，不重复计数"
+    },
+    {
+      "id": 6,
+      "audio": "corpus/speech/00081200.wav",
+      "text": "u y u ng",
+      "duration_sec": 1.82,
+      "sample_rate": 24000,
+      "bytes": 87440,
+      "usage": "TTS（文本→音频）与 ASR（音频→文本）共用同一批数据，不重复计数"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}满语语音语料 · 语料集 · {{ site.platform_name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/corpus.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="section corpus-section">
+  <div class="corpus-subhead">
+    <h2 class="section-title">满语语音语料 <span class="corpus-code">0603 / 0604</span></h2>
+    <a class="corpus-back" href="{{ url_for('corpus.index') }}">← 返回语料集</a>
+  </div>
+
+  <div class="corpus-tip">
+    同一批音频<strong>供语音合成与语音识别两种用途共用</strong>
+    （<code>06语料集/0604</code> 目录批注为「反向使用语音合成数据」），因此不重复计数。
+    每条含 <code>wav</code>（24 kHz / 16 bit / 单声道）+ 拉丁转写 + TextGrid 音素对齐。
+    此处展示 {{ data.entries | length if data else 0 }} 条切片（优先选 2~3 秒的短音频）。
+  </div>
+
+  {% if data %}
+  <div class="audio-list">
+    {% for e in data.entries %}
+    <div class="audio-row">
+      <div class="idx">{{ e.id }}</div>
+      <audio controls preload="none" src="{{ url_for('static', filename=e.audio) }}"></audio>
+      <div class="txt">
+        {{ e.text }}
+        <span class="dur">{{ e.duration_sec }} 秒 · {{ e.sample_rate }} Hz ·
+          {{ (e.bytes / 1024) | round(1) }} KB</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="corpus-empty">
+    <strong>语音切片未生成。</strong>
+    请运行 <code>python3 scripts/make_corpus_samples.py speech</code>（数据取自 <code>Manchu_data_v8</code>）。
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/corpus.js') }}"></script>
+{% endblock %}
