@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}工作台 · {{ site.platform_name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/workbench.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="section wb-section">
+  <!-- ==================== 顶栏：身份 ==================== -->
+  <div class="wb-topbar">
+    <div>
+      <div class="section-eyebrow">Workbench</div>
+      <h2 class="section-title">工作台</h2>
+    </div>
+    <div class="wb-who">
+      <div class="wb-avatar sm">{{ user.name[0] }}</div>
+      <div>
+        <div class="wb-who-name">{{ user.name }}</div>
+        <div class="wb-role role-{{ user.role }}">{{ user.role_name }}</div>
+      </div>
+      <a class="wb-btn ghost" href="{{ url_for('workbench.logout') }}">退出</a>
+    </div>
+  </div>
+
+  {% if demo %}
+  <div class="wb-banner compact">
+    <span>ℹ️</span>
+    <div>
+      演示模式：数据为 mock，提交与审核记在<strong>服务端内存</strong>里（各角色共享，重启门户即恢复初始），
+      <strong>不落盘、不上传</strong>。
+    </div>
+    <button class="wb-btn ghost" id="btnReset">↺ 重置</button>
+  </div>
+  {% endif %}
+
+  <!-- ==================== 统计 ==================== -->
+  <div class="wb-stats">
+    <div class="wb-stat">
+      <div class="wb-stat-num">{{ stats.total }}</div>
+      <div class="wb-stat-label">提交总数</div>
+    </div>
+    <div class="wb-stat warn">
+      <div class="wb-stat-num">{{ stats.pending }}</div>
+      <div class="wb-stat-label">待审核</div>
+    </div>
+    <div class="wb-stat ok">
+      <div class="wb-stat-num">{{ stats.passed }}</div>
+      <div class="wb-stat-label">已通过</div>
+    </div>
+    <div class="wb-stat">
+      <div class="wb-stat-num">{{ stats.rate }}%</div>
+      <div class="wb-stat-label">通过率</div>
+    </div>
+  </div>
+
+  <!-- ==================== 工具入口 ==================== -->
+  <h3 class="wb-h3">标注工具</h3>
+  <div class="wb-tools">
+    <a class="wb-tool" href="{{ url_for('workbench.ocr_annotate') }}">
+      <div class="wb-tool-icon">📷</div>
+      <div class="wb-tool-title">满文古籍 OCR 标注</div>
+      <div class="wb-tool-desc">古籍图框选 + 识别结果修正，导出训练集与修正集</div>
+      <div class="wb-tool-meta">待标注 {{ tasks_todo }} / {{ tasks_total }} 张</div>
+    </a>
+    <a class="wb-tool" href="{{ url_for('workbench.proofread') }}">
+      <div class="wb-tool-icon">📝</div>
+      <div class="wb-tool-title">满汉双行校对</div>
+      <div class="wb-tool-desc">奇偶段落规则校验，定位并修复错位、空行</div>
+      <div class="wb-tool-meta">{{ rows_total }} 句对 · 检出 {{ rows_bad }} 处问题</div>
+    </a>
+    <a class="wb-tool" href="{{ url_for('workbench.ud_annotator') }}">
+      <div class="wb-tool-icon">🌳</div>
+      <div class="wb-tool-title">依存句法标注</div>
+      <div class="wb-tool-desc">分词、词性、依存关系标注，导出 CoNLL-U</div>
+      <div class="wb-tool-meta">待标注 {{ ud_total }} 句</div>
+    </a>
+    {% if user.role in ['reviewer', 'admin'] %}
+    <a class="wb-tool accent" href="{{ url_for('workbench.review') }}">
+      <div class="wb-tool-icon">✅</div>
+      <div class="wb-tool-title">审核台</div>
+      <div class="wb-tool-desc">验收标注员提交，通过或驳回并留意见</div>
+      <div class="wb-tool-meta">待我验收 {{ pending_list | length }} 条</div>
+    </a>
+    {% else %}
+    <div class="wb-tool locked">
+      <div class="wb-tool-icon">🔒</div>
+      <div class="wb-tool-title">审核台</div>
+      <div class="wb-tool-desc">需要审核员及以上角色</div>
+      <div class="wb-tool-meta">你的角色：{{ user.role_name }}</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ==================== 最近提交 ==================== -->
+  <h3 class="wb-h3">最近提交</h3>
+  <table class="wb-table">
+    <thead>
+      <tr><th>编号</th><th>类型</th><th>内容</th><th>提交人</th><th>时间</th><th>状态</th><th>意见</th></tr>
+    </thead>
+    <tbody>
+      {% for s in subs %}
+      <tr>
+        <td class="mono">{{ s.id }}</td>
+        <td>{{ s.type }}</td>
+        <td>{{ s.title }}</td>
+        <td>{{ s.user }}</td>
+        <td class="mono dim">{{ s.time }}</td>
+        <td><span class="wb-badge {{ 'ok' if s.status == '已通过' else ('bad' if s.status == '已驳回' else 'wait') }}">{{ s.status }}</span></td>
+        <td class="dim">{{ s.comment or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  window.WB_RESET_URL = {{ url_for('workbench.reset') | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/workbench.js') }}"></script>
+{% endblock %}

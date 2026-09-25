@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}满汉双行校对 · 工作台{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/workbench.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="section wb-section">
+  <div class="wb-topbar">
+    <div>
+      <div class="section-eyebrow">0702 · Proofread</div>
+      <h2 class="section-title">满汉双行校对</h2>
+    </div>
+    <div class="wb-who">
+      <div class="wb-avatar sm">{{ user.name[0] }}</div>
+      <span class="wb-role role-{{ user.role }}">{{ user.role_name }}</span>
+      <a class="wb-btn ghost" href="{{ url_for('workbench.index') }}">← 回工作台</a>
+    </div>
+  </div>
+
+  <div class="wb-banner compact">
+    <span>ℹ️</span>
+    <div>
+      演示：句对取自真实语料切片，<strong>错误是人为插入的</strong>（空行 / 多余空段落 / 汉满不对应），
+      用来演示"校验 → 定位 → 修复 → 提交"这条链路。提交不落盘。
+    </div>
+  </div>
+
+  <div class="wb-toolbar">
+    <button class="wb-btn" id="btnPrev">⬆️ 上一处</button>
+    <button class="wb-btn" id="btnNext">⬇️ 下一处</button>
+    <button class="wb-btn primary" id="btnFix">🔧 修复当前</button>
+    <span class="wb-spacer"></span>
+    <span class="wb-count">剩余问题 <b id="badCount">{{ bad_rows | length }}</b> 处</span>
+    <button class="wb-btn primary" id="btnSave">💾 保存并提交</button>
+  </div>
+
+  <table class="wb-table proof">
+    <thead>
+      <tr><th class="col-idx">#</th><th>拉丁满文（奇数行）</th><th>汉文（偶数行）</th><th>校验</th></tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr class="prow {% if r.error %}has-error{% endif %}" data-idx="{{ r.idx }}" data-error="{{ r.error or '' }}">
+        <td class="col-idx mono">{{ r.idx }}</td>
+        <td class="cell-latin">{{ r.latin }}</td>
+        <td class="cell-zh">{% if r.zh %}{{ r.zh }}{% else %}<span class="blank">（缺失）</span>{% endif %}</td>
+        <td class="cell-check">
+          {% if r.error == 'empty' %}
+            <span class="wb-badge bad">缺汉文行</span>
+          {% elif r.error == 'blank' %}
+            <span class="wb-badge bad">多余空段落</span>
+          {% elif r.error == 'mismatch' %}
+            <span class="wb-badge bad">汉满不对应</span>
+          {% else %}
+            <span class="wb-badge ok">通过</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  window.WB_BAD_ROWS = {{ bad_rows | tojson }};
+  window.WB_SUBMIT_URL = {{ url_for('workbench.proofread_submit') | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/workbench.js') }}"></script>
+{% endblock %}

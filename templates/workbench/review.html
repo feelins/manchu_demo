@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}审核台 · 工作台{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/workbench.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="section wb-section">
+  <div class="wb-topbar">
+    <div>
+      <div class="section-eyebrow">Review</div>
+      <h2 class="section-title">审核台</h2>
+    </div>
+    <div class="wb-who">
+      <div class="wb-avatar sm">{{ user.name[0] }}</div>
+      <span class="wb-role role-{{ user.role }}">{{ user.role_name }}</span>
+      <a class="wb-btn ghost" href="{{ url_for('workbench.index') }}">← 回工作台</a>
+    </div>
+  </div>
+
+  <div class="wb-banner compact">
+    <span>ℹ️</span>
+    <div>
+      演示：审核结果只改变本机会话里的状态，<strong>不会真的验收任何数据</strong>。
+      通过/驳回后回工作台可以看到统计与列表变化。
+    </div>
+  </div>
+
+  <h3 class="wb-h3">待我验收（{{ pending | length }}）</h3>
+  {% if pending %}
+  <div class="wb-review-list">
+    {% for s in pending %}
+    <div class="wb-review" data-id="{{ s.id }}">
+      <div class="wb-review-main">
+        <div class="wb-review-title">{{ s.title }}</div>
+        <div class="wb-review-meta">
+          <span class="wb-badge">{{ s.type }}</span>
+          <span>{{ s.user }}</span>
+          <span class="mono dim">{{ s.time }}</span>
+          <span class="mono dim">{{ s.id }}</span>
+        </div>
+      </div>
+      <div class="wb-review-actions">
+        <input class="wb-input inline" placeholder="驳回意见（可选）">
+        <button class="wb-btn danger" data-act="reject">驳回</button>
+        <button class="wb-btn primary" data-act="approve">通过</button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="wb-empty">当前没有待验收的提交。</div>
+  {% endif %}
+
+  <h3 class="wb-h3">已处理（{{ reviewed | length }}）</h3>
+  <table class="wb-table">
+    <thead>
+      <tr><th>编号</th><th>类型</th><th>内容</th><th>提交人</th><th>状态</th><th>意见</th></tr>
+    </thead>
+    <tbody>
+      {% for s in reviewed %}
+      <tr>
+        <td class="mono">{{ s.id }}</td>
+        <td>{{ s.type }}</td>
+        <td>{{ s.title }}</td>
+        <td>{{ s.user }}</td>
+        <td><span class="wb-badge {{ 'ok' if s.status == '已通过' else 'bad' }}">{{ s.status }}</span></td>
+        <td class="dim">{{ s.comment or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  window.WB_REVIEW_URL = {{ url_for('workbench.review_decide') | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/workbench.js') }}"></script>
+{% endblock %}

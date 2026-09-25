@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}无权限 · 工作平台{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/workbench.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="section wb-section">
+  <div class="wb-denied">
+    <div class="wb-denied-icon">🔒</div>
+    <h2>403 · 没有访问权限</h2>
+    <p>
+      当前身份是 <strong>{{ user.name }}（{{ user.role_name }}）</strong>，
+      而这个功能需要 <strong>{{ need_name }}</strong> 及以上角色。
+    </p>
+    <p class="dim">
+      这就是工作平台要做 RBAC 的原因：标注员只能提交，验收要交给审核员，
+      避免自己标自己过。
+    </p>
+    <div class="wb-denied-actions">
+      <a class="wb-btn primary" href="{{ url_for('workbench.index') }}">回工作台</a>
+      <a class="wb-btn ghost" href="{{ url_for('workbench.logout') }}">换个身份登录</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

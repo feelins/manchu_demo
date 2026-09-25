@@ -20,8 +20,9 @@
 
     <nav class="nav">
       {% for item in nav_items %}
+      {# 需要登录的栏目（如工作平台）：未登录置灰，登录后解锁 #}
       <a href="{{ url_for(item.endpoint) }}"
-         class="{% if item.key == active_nav %}is-active{% endif %}{% if item.locked %} is-locked{% endif %}">{{ item.name }}</a>
+         class="{% if item.key == active_nav %}is-active{% endif %}{% if item.locked and not session.wb_user %} is-locked{% endif %}">{{ item.name }}</a>
       {% endfor %}
     </nav>
   </div>

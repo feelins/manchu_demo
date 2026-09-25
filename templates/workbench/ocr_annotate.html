@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}满文古籍 OCR 标注 · 工作台{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/workbench.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="section wb-section">
+  <div class="wb-topbar">
+    <div>
+      <div class="section-eyebrow">0701 · Annotation</div>
+      <h2 class="section-title">满文古籍 OCR 标注</h2>
+    </div>
+    <div class="wb-who">
+      <div class="wb-avatar sm">{{ user.name[0] }}</div>
+      <span class="wb-role role-{{ user.role }}">{{ user.role_name }}</span>
+      <a class="wb-btn ghost" href="{{ url_for('workbench.index') }}">← 回工作台</a>
+    </div>
+  </div>
+
+  <div class="wb-banner compact">
+    <span>ℹ️</span>
+    <div>
+      演示：图片是真实语料切片，<strong>框与识别结果是 mock</strong>；
+      「AI 画框 / AI 预测」模拟 1 秒返回，不调用真实模型（真实检测服务 7860 在本机不存在）。
+      提交只记进会话，不落盘。
+    </div>
+  </div>
+
+  <div class="wb-annot">
+    <!-- ==================== 左：任务列表 ==================== -->
+    <aside class="wb-tasklist">
+      <div class="wb-panel-title">任务列表</div>
+      {% for t in tasks %}
+      <button class="wb-task {% if t.id == task.id %}active{% endif %}" data-task="{{ t.id }}">
+        <img src="{{ url_for('static', filename=t.image) }}" alt="{{ t.id }}">
+        <div class="wb-task-meta">
+          <span class="mono">{{ t.id }}.png</span>
+          <span class="wb-badge {{ 'wait' if t.status == '待标注' else 'ok' }}">{{ t.status }}</span>
+        </div>
+      </button>
+      {% endfor %}
+    </aside>
+
+    <!-- ==================== 中：画布 ==================== -->
+    <div class="wb-main">
+      <div class="wb-toolbar">
+        <button class="wb-btn" id="btnDetect">🔍 AI 画框</button>
+        <button class="wb-btn" id="btnPredict">🤖 AI 预测</button>
+        <button class="wb-btn" id="btnAdd">➕ 添加框</button>
+        <button class="wb-btn danger" id="btnClear">🗑️ 清空</button>
+        <span class="wb-spacer"></span>
+        <span class="wb-count">当前 <b id="boxCount">0</b> 框</span>
+        <button class="wb-btn primary" id="btnSubmit">✅ 提交审核</button>
+      </div>
+
+      <div class="wb-canvas" id="canvas">
+        <img id="pageImg" src="{{ url_for('static', filename=task.image) }}" alt="古籍页">
+        <div id="boxLayer"></div>
+      </div>
+
+      <div class="wb-hint">
+        点击框可选中并修改右侧文本；<span class="suspect-chip">橙色框</span>表示置信度低、建议人工确认。
+      </div>
+    </div>
+
+    <!-- ==================== 右：属性 ==================== -->
+    <aside class="wb-props">
+      <div class="wb-panel-title">框属性</div>
+      <div id="propEmpty" class="wb-empty-sm">未选中任何框</div>
+      <div id="propBody" hidden>
+        <label class="wb-label">识别文本（传统满文）</label>
+        <textarea id="propText" class="wb-input manju" rows="3" dir="ltr"></textarea>
+        <label class="wb-label">置信度</label>
+        <div class="wb-conf"><span id="propConf">0.00</span></div>
+        <label class="wb-label">状态</label>
+        <div id="propFlag" class="wb-flag">正常</div>
+        <button class="wb-btn primary block" id="btnConfirm">✔ 确认这框</button>
+      </div>
+
+      <div class="wb-panel-title mt">本页进度</div>
+      <div class="wb-progress">
+        <div class="wb-progress-bar"><span id="progBar" style="width:0%"></span></div>
+        <div class="wb-progress-text"><span id="progText">0 / 0 已确认</span></div>
+      </div>
+    </aside>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  window.WB_TASKS = {{ tasks | tojson }};
+  window.WB_CURRENT = {{ task.id | tojson }};
+  window.WB_SUBMIT_URL = {{ url_for('workbench.ocr_submit') | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/workbench.js') }}"></script>
+{% endblock %}

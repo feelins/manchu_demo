@@ -1,0 +1,525 @@
+/* ============================================================
+   工作平台（演示版）· 样式
+   颜色/间距统一走 design-token.css 变量，这里只定义组件
+   ============================================================ */
+
+.wb-section {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 32px 24px 72px;
+}
+
+/* ---------- 顶栏 ---------- */
+.wb-topbar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+}
+
+.wb-who {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.wb-who-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink, #1f2937);
+}
+
+.wb-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: var(--gold, #b08d3f);
+    color: #fff;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.wb-avatar.sm {
+    width: 30px;
+    height: 30px;
+    font-size: 14px;
+}
+
+.wb-role {
+    font-size: 11.5px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--line, #e5e7eb);
+    color: var(--muted, #6b7280);
+    background: #fff;
+}
+
+.wb-role.role-annotator { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+.wb-role.role-reviewer  { background: #f5f3ff; color: #6d28d9; border-color: #ddd6fe; }
+.wb-role.role-admin     { background: #fff1f2; color: #be123c; border-color: #fecdd3; }
+
+/* ---------- 按钮 ---------- */
+.wb-btn {
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--line, #e5e7eb);
+    background: #fff;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--ink, #1f2937);
+    white-space: nowrap;
+}
+
+.wb-btn:hover { background: #f9fafb; }
+
+.wb-btn.primary {
+    background: var(--gold, #b08d3f);
+    border-color: var(--gold, #b08d3f);
+    color: #fff;
+    font-weight: 600;
+}
+
+.wb-btn.primary:hover { filter: brightness(1.05); }
+
+.wb-btn.danger { color: #b91c1c; border-color: #fecaca; background: #fff5f5; }
+.wb-btn.ghost { color: var(--muted, #6b7280); text-decoration: none; display: inline-block; }
+.wb-btn.block { display: block; width: 100%; margin-top: 10px; }
+.wb-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ---------- 提示条 ---------- */
+.wb-banner {
+    display: flex;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: #f0f7ff;
+    border: 1px solid #cfe3fb;
+    color: #1e40af;
+    font-size: 13px;
+    line-height: 1.7;
+    margin-bottom: 20px;
+}
+
+.wb-banner.compact { padding: 9px 14px; font-size: 12.5px; }
+
+/* ---------- 统计 ---------- */
+.wb-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 26px;
+}
+
+.wb-stat {
+    padding: 16px 18px;
+    border-radius: 12px;
+    background: #fff;
+    border: 1px solid var(--line, #e5e7eb);
+}
+
+.wb-stat-num {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--ink, #1f2937);
+    font-variant-numeric: tabular-nums;
+}
+
+.wb-stat.warn .wb-stat-num { color: #b45309; }
+.wb-stat.ok .wb-stat-num { color: #047857; }
+
+.wb-stat-label { font-size: 12.5px; color: var(--muted, #6b7280); margin-top: 2px; }
+
+.wb-h3 {
+    font-size: 15px;
+    margin: 26px 0 12px;
+    color: var(--ink, #1f2937);
+}
+
+/* ---------- 工具卡 ---------- */
+.wb-tools {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 14px;
+}
+
+.wb-tool {
+    display: block;
+    padding: 18px;
+    border-radius: 12px;
+    border: 1px solid var(--line, #e5e7eb);
+    background: #fff;
+    text-decoration: none;
+    color: inherit;
+    transition: transform .16s ease, box-shadow .16s ease;
+}
+
+.wb-tool:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(16, 24, 40, .08);
+}
+
+.wb-tool.accent { border-color: var(--gold, #b08d3f); background: #fffdf7; }
+.wb-tool.locked { background: #fafafa; color: var(--muted, #6b7280); }
+
+.wb-tool-icon { font-size: 24px; margin-bottom: 8px; }
+.wb-tool-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.wb-tool-desc { font-size: 12.5px; color: var(--muted, #6b7280); line-height: 1.6; }
+.wb-tool-meta { margin-top: 10px; font-size: 12px; color: var(--gold, #b08d3f); }
+
+/* ---------- 表格 ---------- */
+.wb-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border: 1px solid var(--line, #e5e7eb);
+    border-radius: 10px;
+    overflow: hidden;
+    font-size: 13.5px;
+}
+
+.wb-table th, .wb-table td {
+    padding: 9px 12px;
+    border-bottom: 1px solid #f1f2f4;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.wb-table th {
+    background: #fafafa;
+    font-size: 12px;
+    color: var(--muted, #6b7280);
+    font-weight: 600;
+}
+
+.wb-table tr:last-child td { border-bottom: none; }
+.mono { font-family: "SFMono-Regular", Consolas, monospace; font-size: 12.5px; }
+.dim { color: #9ca3af; }
+
+.wb-badge {
+    display: inline-block;
+    font-size: 11.5px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #f3f4f6;
+    color: var(--muted, #6b7280);
+    border: 1px solid var(--line, #e5e7eb);
+}
+
+.wb-badge.ok { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+.wb-badge.bad { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+.wb-badge.wait { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+
+/* ---------- 登录页 ---------- */
+.wb-users {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin-top: 8px;
+}
+
+.wb-user-card {
+    padding: 22px 18px;
+    border-radius: 14px;
+    border: 1px solid var(--line, #e5e7eb);
+    background: #fff;
+    text-align: center;
+}
+
+.wb-user-card .wb-avatar { margin: 0 auto 10px; }
+.wb-user-name { font-size: 16px; font-weight: 600; }
+.wb-user-card .wb-role { display: inline-block; margin: 6px 0 12px; }
+
+.wb-perm {
+    list-style: none;
+    margin: 0 0 16px;
+    padding: 0;
+    text-align: left;
+    font-size: 12.5px;
+    line-height: 1.9;
+    color: var(--muted, #6b7280);
+}
+
+.wb-tip {
+    margin-top: 20px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    font-size: 12.5px;
+    color: #92400e;
+}
+
+/* ---------- 403 ---------- */
+.wb-denied {
+    max-width: 560px;
+    margin: 40px auto;
+    text-align: center;
+    padding: 32px;
+    border: 1px solid var(--line, #e5e7eb);
+    border-radius: 14px;
+    background: #fff;
+}
+
+.wb-denied-icon { font-size: 48px; }
+.wb-denied h2 { margin: 10px 0 14px; font-size: 20px; }
+.wb-denied p { font-size: 14px; line-height: 1.8; color: var(--muted, #6b7280); }
+.wb-denied-actions { margin-top: 22px; display: flex; gap: 10px; justify-content: center; }
+
+/* ============================================================
+   工具页布局
+   ============================================================ */
+.wb-annot, .wb-ud {
+    display: grid;
+    grid-template-columns: 210px 1fr 260px;
+    gap: 16px;
+    align-items: start;
+}
+
+.wb-ud { grid-template-columns: 260px 1fr; }
+
+.wb-tasklist {
+    border: 1px solid var(--line, #e5e7eb);
+    border-radius: 12px;
+    background: #fff;
+    padding: 12px;
+    display: grid;
+    gap: 8px;
+    max-height: 620px;
+    overflow: auto;
+}
+
+.wb-panel-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted, #6b7280);
+    padding: 2px 2px 6px;
+}
+
+.wb-panel-title.mt { margin-top: 18px; border-top: 1px dashed var(--line, #e5e7eb); padding-top: 12px; }
+
+.wb-task {
+    display: block;
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--line, #e5e7eb);
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    text-align: left;
+    font-size: 12.5px;
+}
+
+.wb-task.active { border-color: var(--gold, #b08d3f); background: #fffdf7; }
+.wb-task img { width: 100%; border-radius: 4px; background: #fafafa; }
+
+.wb-task-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.wb-task.text { padding: 10px; }
+.wb-task-latin { font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; color: #374151; }
+
+/* ---------- 画布 ---------- */
+.wb-main { min-width: 0; }
+
+.wb-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--line, #e5e7eb);
+    border-radius: 10px;
+    background: #fff;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.wb-spacer { flex: 1; }
+.wb-count { font-size: 12.5px; color: var(--muted, #6b7280); }
+.wb-count b { color: var(--ink, #1f2937); }
+
+.wb-canvas {
+    position: relative;
+    border: 1px solid var(--line, #e5e7eb);
+    border-radius: 10px;
+    background: #fafafa;
+    overflow: hidden;
+}
+
+.wb-canvas img { display: block; width: 100%; }
+
+.wb-box {
+    position: absolute;
+    border: 2px solid var(--gold, #b08d3f);
+    background: rgba(176, 141, 63, .10);
+    cursor: pointer;
+    border-radius: 3px;
+}
+
+.wb-box.suspect { border-color: #f59e0b; background: rgba(245, 158, 11, .12); }
+.wb-box.active { border-width: 3px; box-shadow: 0 0 0 2px rgba(176, 141, 63, .35); }
+.wb-box.confirmed { border-style: solid; border-color: #059669; background: rgba(5, 150, 105, .10); }
+
+.wb-box .tag {
+    position: absolute;
+    top: -18px;
+    left: -2px;
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: var(--gold, #b08d3f);
+    color: #fff;
+    white-space: nowrap;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.wb-box.suspect .tag { background: #f59e0b; }
+.wb-box.confirmed .tag { background: #059669; }
+
+.wb-hint { margin-top: 10px; font-size: 12px; color: var(--muted, #6b7280); }
+.suspect-chip { color: #b45309; }
+
+/* ---------- 属性面板 ---------- */
+.wb-props {
+    border: 1px solid var(--line, #e5e7eb);
+    border-radius: 12px;
+    background: #fff;
+    padding: 14px;
+}
+
+.wb-empty-sm { font-size: 12.5px; color: #9ca3af; padding: 8px 0; }
+.wb-label { display: block; font-size: 12px; color: var(--muted, #6b7280); margin: 10px 0 4px; }
+
+.wb-input {
+    width: 100%;
+    padding: 7px 10px;
+    border: 1px solid var(--line, #e5e7eb);
+    border-radius: 8px;
+    font-size: 13px;
+    box-sizing: border-box;
+}
+
+.wb-input.manju { font-family: "Buleku", serif; font-size: 18px; direction: ltr; }
+.wb-input.inline { width: 190px; }
+
+.wb-conf { font-size: 18px; font-weight: 600; color: var(--ink, #1f2937); }
+.wb-flag { font-size: 12.5px; color: var(--muted, #6b7280); }
+
+.wb-progress-bar {
+    height: 6px;
+    border-radius: 999px;
+    background: #f1f2f4;
+    overflow: hidden;
+}
+
+.wb-progress-bar span {
+    display: block;
+    height: 100%;
+    background: #059669;
+    transition: width .25s ease;
+}
+
+.wb-progress-text { margin-top: 6px; font-size: 12px; color: var(--muted, #6b7280); }
+
+/* ============================================================
+   校对
+   ============================================================ */
+.wb-table.proof td { vertical-align: top; }
+.col-idx { width: 44px; color: #9ca3af; }
+.cell-latin { font-family: "SFMono-Regular", Consolas, monospace; font-size: 12.5px; }
+.cell-zh { font-size: 13.5px; }
+.cell-check { width: 120px; }
+.blank { color: #dc2626; font-size: 12.5px; }
+
+tr.prow.has-error { background: #fff5f5; }
+tr.prow.current { outline: 2px solid var(--gold, #b08d3f); outline-offset: -2px; }
+tr.prow.fixed { background: #ecfdf5; }
+
+/* ============================================================
+   依存标注
+   ============================================================ */
+.wb-sentence {
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 17px;
+    padding: 12px 14px;
+    background: #fafafa;
+    border: 1px solid var(--line, #e5e7eb);
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+
+.wb-tokens { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+
+.wb-token {
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--line, #e5e7eb);
+    background: #fff;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.wb-token.active { border-color: var(--gold, #b08d3f); background: #fffdf7; }
+.wb-token.root { border-color: #059669; background: #ecfdf5; }
+.wb-token small { display: block; font-size: 10.5px; color: var(--muted, #6b7280); }
+
+.wb-udtree {
+    width: 100%;
+    height: 220px;
+    border: 1px solid var(--line, #e5e7eb);
+    border-radius: 10px;
+    background: #fffdf9;
+    margin-bottom: 4px;
+}
+
+/* ============================================================
+   审核
+   ============================================================ */
+.wb-review-list { display: grid; gap: 12px; }
+
+.wb-review {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 16px;
+    border: 1px solid var(--line, #e5e7eb);
+    border-radius: 10px;
+    background: #fff;
+    flex-wrap: wrap;
+}
+
+.wb-review-title { font-size: 14.5px; font-weight: 600; }
+.wb-review-meta { display: flex; align-items: center; gap: 10px; margin-top: 6px; font-size: 12.5px; color: var(--muted, #6b7280); }
+.wb-review-actions { display: flex; align-items: center; gap: 8px; }
+.wb-empty { padding: 24px; text-align: center; color: #9ca3af; background: #fafafa; border-radius: 10px; }
+
+/* ---------- toast ---------- */
+.wb-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 40px;
+    transform: translateX(-50%);
+    padding: 10px 20px;
+    border-radius: 8px;
+    background: #111827;
+    color: #fff;
+    font-size: 13.5px;
+    z-index: 999;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .2);
+}
+
+@media (max-width: 1000px) {
+    .wb-annot { grid-template-columns: 1fr; }
+    .wb-stats { grid-template-columns: repeat(2, 1fr); }
+}

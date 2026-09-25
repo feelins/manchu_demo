@@ -16,11 +16,12 @@ from modules.ocr import ocr_api_bp, ocr_bp
 from modules.translate import translate_api_bp, translate_bp
 from modules.translit import translit_bp
 from modules.tts import tts_api_bp, tts_bp
+from modules.workbench import workbench_bp
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # 已接入真实蓝图的模块（其余仍为占位路由）
-REAL_MODULES = {"ocr", "translit", "translate", "tts", "corpus"}
+REAL_MODULES = {"ocr", "translit", "translate", "tts", "corpus", "workbench"}
 
 # 各模块后端网关前缀（前端只用相对路径，由门户转发到真实服务）
 OCR_API_BASE = os.environ.get("OCR_API_BASE", "/api/ocr")
@@ -42,6 +43,9 @@ def create_app():
         template_folder=os.path.join(BASE_DIR, "templates"),
         static_folder=os.path.join(BASE_DIR, "static"),
     )
+    # session 依赖 secret_key：工作平台演示版把登录态与提交记录放在 session 里。
+    # 生产部署请用环境变量 FLASK_SECRET 覆盖，不要把默认值带上线。
+    app.secret_key = os.environ.get("FLASK_SECRET", "manchu-demo-dev-secret")
 
     # ---- 全站模板变量：站点信息、导航、页脚、首页数据 ----
     @app.context_processor
@@ -75,6 +79,7 @@ def create_app():
     app.register_blueprint(tts_api_bp)   # 接口：/api/tts/（转发到 TTS 推理服务 + 音频回源）
     app.register_blueprint(corpus_bp)       # 页面：/corpus/（语料集，只读切片，无外部依赖）
     app.register_blueprint(corpus_api_bp)   # 接口：/api/corpus/（切片与规模统计）
+    app.register_blueprint(workbench_bp)    # 页面：/workbench/（工作平台·演示版，需登录）
 
     # ---- 其余模块占位路由（保证导航与页脚链接可用） ----
     for item in NAV_ITEMS:

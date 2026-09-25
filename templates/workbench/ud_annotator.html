@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}依存句法标注 · 工作台{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/workbench.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="section wb-section">
+  <div class="wb-topbar">
+    <div>
+      <div class="section-eyebrow">0703 · UD Annotation</div>
+      <h2 class="section-title">依存句法标注</h2>
+    </div>
+    <div class="wb-who">
+      <div class="wb-avatar sm">{{ user.name[0] }}</div>
+      <span class="wb-role role-{{ user.role }}">{{ user.role_name }}</span>
+      <a class="wb-btn ghost" href="{{ url_for('workbench.index') }}">← 回工作台</a>
+    </div>
+  </div>
+
+  <div class="wb-banner compact">
+    <span>ℹ️</span>
+    <div>
+      演示：句子与依存关系是<strong>预置 mock</strong>（不求语言学精确），
+      用来演示"分词 → 依存关系 → 导出 CoNLL-U → 提交"的流程。
+      真实工具 <code>manchu_ud_annotator.html</code> 可交互拖拽，见
+      <code>07工作平台/0703依存语法可视化/</code>。
+    </div>
+  </div>
+
+  <div class="wb-ud">
+    <!-- ==================== 句子列表 ==================== -->
+    <aside class="wb-tasklist">
+      <div class="wb-panel-title">句子</div>
+      {% for s in sentences %}
+      <button class="wb-task text {% if s.id == sentence.id %}active{% endif %}" data-sent="{{ s.id }}">
+        <div class="wb-task-latin">{{ s.text }}</div>
+        <div class="wb-task-meta"><span class="dim">{{ s.zh }}</span></div>
+      </button>
+      {% endfor %}
+    </aside>
+
+    <!-- ==================== 主区 ==================== -->
+    <div class="wb-main">
+      <div class="wb-toolbar">
+        <button class="wb-btn" id="btnTokenize">✂️ 分词</button>
+        <button class="wb-btn" id="btnExport">📥 导出 CoNLL-U</button>
+        <span class="wb-spacer"></span>
+        <span class="wb-count"><b id="tokenCount">0</b> 词</span>
+        <button class="wb-btn primary" id="btnSubmit">✅ 提交审核</button>
+      </div>
+
+      <div class="wb-sentence" id="sentenceText">{{ sentence.text }}</div>
+
+      <div class="wb-tokens" id="tokenRow"></div>
+
+      <svg class="wb-udtree" id="udTree" viewBox="0 0 900 220" preserveAspectRatio="xMidYMid meet"></svg>
+
+      <div class="wb-panel-title mt">CoNLL-U</div>
+      <table class="wb-table conllu">
+        <thead>
+          <tr><th>ID</th><th>FORM</th><th>UPOS</th><th>HEAD</th><th>DEPREL</th></tr>
+        </thead>
+        <tbody id="conlluBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  window.WB_SENTENCES = {{ sentences | tojson }};
+  window.WB_CURRENT_SENT = {{ sentence.id | tojson }};
+  window.WB_SUBMIT_URL = {{ url_for('workbench.ud_submit') | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/workbench.js') }}"></script>
+{% endblock %}

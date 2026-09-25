@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}登录 · 工作平台 · {{ site.platform_name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/workbench.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="section wb-section">
+  <div class="section-head">
+    <div class="section-eyebrow">Workbench · Demo</div>
+    <h2 class="section-title">工作平台 · 登录</h2>
+    <p class="section-desc">
+      工作平台是平台的<strong>生产侧</strong>：标注、校对、审核，产出的数据回流训练。
+      因此它需要登录，且不对外。
+    </p>
+  </div>
+
+  {% if demo %}
+  <div class="wb-banner">
+    <span>ℹ️</span>
+    <div>
+      <strong>这是纯演示版。</strong>
+      直接选一个身份进入即可，<strong>不校验口令、不落盘任何数据</strong>；
+      操作产生的记录存在浏览器会话里，换浏览器就没了。
+      真实平台还需要账号体系、口令或校内单点登录、RBAC、操作审计与数据备份
+      ——见 <code>docs/11-工作平台模块分析与初稿设计.md</code> 第 5 节。
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="wb-users">
+    {% for u in users %}
+    <form method="post" class="wb-user-card">
+      <input type="hidden" name="uid" value="{{ u.id }}">
+      <div class="wb-avatar">{{ u.name[0] }}</div>
+      <div class="wb-user-name">{{ u.name }}</div>
+      <div class="wb-role role-{{ u.role }}">{{ u.role_name }}</div>
+      <ul class="wb-perm">
+        {% if u.role == 'annotator' %}
+          <li>✅ 进入三个标注工具</li>
+          <li>✅ 提交标注结果</li>
+          <li>❌ 不能进审核台</li>
+        {% elif u.role == 'reviewer' %}
+          <li>✅ 标注员全部权限</li>
+          <li>✅ 审核台：通过 / 驳回</li>
+          <li>❌ 不能建号</li>
+        {% else %}
+          <li>✅ 审核员全部权限</li>
+          <li>✅ 账号与角色管理</li>
+          <li>✅ 全部数据可见</li>
+        {% endif %}
+      </ul>
+      <button class="wb-btn primary" type="submit">以此身份进入 →</button>
+    </form>
+    {% endfor %}
+  </div>
+
+  <div class="wb-tip">
+    💡 想看权限拦截的效果：用<strong>标注员</strong>身份进入后访问
+    <code>/workbench/review</code>，会被挡在门外（403）。
+  </div>
+</section>
+{% endblock %}
