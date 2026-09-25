@@ -229,3 +229,18 @@
   .pipeline,.workspace-grid{grid-template-columns:1fr;}
   .workspace{padding:34px 22px;}
 }
+
+/* 模块状态徽章：「规划中」「需模型服务」等，避免首页把未实现功能说成已实现 */
+.card-status{
+  display:inline-block;
+  margin-left:8px;
+  padding:1px 8px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:500;
+  line-height:1.6;
+  vertical-align:middle;
+  background:#f3f4f6;
+  color:#6b7280;
+  border:1px solid #e5e7eb;
+}

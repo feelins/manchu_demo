@@ -48,7 +48,7 @@
       <div class="card-icon">
         <svg viewBox="0 0 24 24"><path d="{{ card.icon }}"/></svg>
       </div>
-      <h3>{{ card.title }}</h3>
+      <h3>{{ card.title }}{% if card.status %}<span class="card-status">{{ card.status }}</span>{% endif %}</h3>
       <div class="card-manju">{{ card.manju }}</div>
       <p>{{ card.desc }}</p>
       <div class="card-tags">
@@ -79,7 +79,7 @@
       <div class="pipe">
         <div class="pipe-head">
           <span class="badge">{{ pipe.badge }}</span>
-          <h3>{{ pipe.title }}</h3>
+          <h3>{{ pipe.title }}{% if pipe.status %}<span class="card-status">{{ pipe.status }}</span>{% endif %}</h3>
         </div>
         <ul class="steps">
           {% for title, note in pipe.steps %}
