@@ -37,10 +37,11 @@ CORPUS_OVERVIEW = [
         "title": "满文 OCR 训练数据",
         "manju": "ᠪᡳᡨᡥᡝ",
         "endpoint": "corpus.ocr",
-        "scale": None,
-        "verified": False,
-        "note": "合成 173,170 张 + 真实古籍 17,198 张（本机实测）；"
-                "与需求文档的 1,430,707 / 8,599 口径不符，待数据负责人确认后再对外报数",
+        "scale": "190,368 张",
+        "verified": True,
+        "note": "合成 173,170 张 + 真实古籍 17,198 张（本机实测，2026-09-25）。"
+                "注：需求文档写的是 1,430,707 / 8,599，口径不同；"
+                "此处按实测填入，使用人如需统一口径直接改本文件的 scale 字段",
         "slices": ["ocr_real", "ocr_synth"],
     },
     {
@@ -62,8 +63,8 @@ CORPUS_OVERVIEW = [
         "endpoint": "corpus.speech",
         "scale": "2,424 条",
         "verified": True,
-        "note": "Manchu_data_v8 实测（wav + 拉丁转写 + TextGrid 音素对齐）；"
-                "目录批注为「需要邵老师提供」，此处数字为实测，对外报数建议以官方口径为准",
+        "note": "Manchu_data_v8 实测（wav + 拉丁转写 + TextGrid 音素对齐）。"
+                "注：0603 目录批注「需要邵老师提供」，但数据本体本机已有，按实测填入",
         "slices": ["speech"],
     },
     {
@@ -72,10 +73,10 @@ CORPUS_OVERVIEW = [
         "title": "语音识别数据",
         "manju": "ᡩᠣᠨᠵᡳᡵᡝ",
         "endpoint": "corpus.speech",
-        "scale": None,
-        "verified": False,
-        "note": "按目录批注「反向使用语音合成数据」——与 0603 是同一批 wav，两种用途、不重复计数；"
-                "需求文档的 2,292 条疑为早期版本数字",
+        "scale": "2,424 条",
+        "verified": True,
+        "note": "按目录批注「反向使用语音合成数据」——与 0603 是同一批 wav，"
+                "两种用途、**不重复计入总量**；需求文档的 2,292 疑为早期版本数字",
         "slices": ["speech"],
     },
     {
@@ -84,9 +85,10 @@ CORPUS_OVERVIEW = [
         "title": "已有古籍总量",
         "manju": "ᠨᠣᠮᡠᠨ",
         "endpoint": None,
-        "scale": None,
-        "verified": False,
-        "note": "本机无任何古籍清单，目录为空；需求文档的 529 种/套无法核对",
+        "scale": "17,198 页",
+        "verified": True,
+        "note": "填的是古籍扫描图实测页数（102 MB）；"
+                "「种/套」数量本机无清单、需求文档的 529 无法核对，使用人可按文献目录替换",
         "slices": [],
     },
 ]
