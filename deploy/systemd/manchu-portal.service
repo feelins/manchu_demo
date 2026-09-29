@@ -1,0 +1,21 @@
+[Unit]
+Description=满语文数智化门户 (Gunicorn)
+Documentation=file://%h/shaopf/manchu_demo/docs/README.md
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/shaopf/manchu_demo
+Environment=FLASK_DEBUG=0
+Environment=PYTHONUNBUFFERED=1
+# run.sh 默认就是前台模式，exec 替换自身，systemd 能正确追踪主进程
+ExecStart=%h/shaopf/manchu_demo/run.sh
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=30
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

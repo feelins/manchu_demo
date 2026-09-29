@@ -103,6 +103,11 @@ app = create_app()
 
 
 if __name__ == "__main__":
-    # 局域网访问：host=0.0.0.0；仅本机可改为 127.0.0.1
+    # 仅用于本地开发调试。
+    # 常驻/对外部署走 gunicorn（见 gunicorn.conf.py 与 deploy/*.service），不要用它：
+    #   · debug=True 会开启 Werkzeug 调试器，对外等于开放远程执行，必须显式变量才打开
+    #   · 它是单进程开发服务器，扛不住并发，也没有自愈能力
+    host = os.environ.get("HOST", "0.0.0.0")   # 仅本机访问改为 127.0.0.1
     port = int(os.environ.get("PORT", 8000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    debug = os.environ.get("FLASK_DEBUG", "0") == "1"
+    app.run(host=host, port=port, debug=debug)
