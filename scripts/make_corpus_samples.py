@@ -10,7 +10,7 @@
 2. 输出目录是 static/corpus/ 而不是 docs/ —— 页面通过 url_for('static', ...) 引用，
    docs/ 是归档目录，不该放运行时资源。
 3. 抽样用**等距抽样**而非随机：结果确定、可复现，重跑不漂移。
-4. 清洗：平行语料去 CRLF，合成图标签去 BOM（manju_170k/*.txt 带 \\ufeff）。
+4. 清洗：平行语料去 CRLF，合成图标签去 BOM（合成目录 *.txt 带 \\ufeff）。
 5. 同时产出 index.json（含元数据与口径），页面与首页数据卡都从它读。
 
 用法：
@@ -28,13 +28,15 @@ OUT = os.path.join(BASE, "static", "corpus")
 
 PARALLEL_SRC = "/home/leyesi/shaopf/服务器配置相关/平台框架/平台框架/06语料集/0602满汉双向翻译训练数据行数/不可展示全部 仅展示几十条即可  all1+2+3.txt"
 OCR_REAL_DIR = "/home/leyesi/ancient_ocr_finetune/ancient_4k_v7"
-OCR_SYNTH_DIR = "/home/leyesi/ocr/manju_170k"
+# 2026-09-30 更正：合成数据用的是 paddle_data_universal 这个 **143 万条完整池**，
+# 不是早期 manju_170k（17 万张）那批——之前指错了目录，数字也跟着错了。
+OCR_SYNTH_DIR = "/home/leyesi/ocr/paddle_data_universal/train"
 SPEECH_DIR = "/home/leyesi/shaopf/Manchu_data_v8/manchu_align_v8"
 
 N_PARALLEL = 30     # 句对
 N_IMAGE = 6         # 每类图片张数
 N_SPEECH = 6        # 音频条数
-STATS_DATE = "2026-09-25"
+STATS_DATE = "2026-09-30"
 
 
 def even_sample(items, n):
@@ -163,8 +165,9 @@ def build_ocr_synth():
     meta = {
         "name": "满文 OCR 训练数据（合成）",
         "source_type": "图像 + 满文标注",
-        "version": "manju_170k",
-        "total_images": 173170,
+        "version": "paddle_data_universal",
+        "total_images": 1430707,
+        "total_val_lines": 252487,
         "form": "满文标准字体渲染的合成行图（多字体）",
         "annotation": "传统满文（合成时同步生成，标签文件带 BOM，已清洗）",
         "license": "仅展示切片",
