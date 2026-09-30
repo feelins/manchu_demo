@@ -43,8 +43,9 @@ case "${1:-foreground}" in
     if [ ! -x "$GUNICORN" ]; then
       echo "未找到 gunicorn，请先安装：.venv/bin/pip install gunicorn"; exit 1
     fi
-    # gunicorn 自己管 daemonize，不需要 nohup
-    PORTAL_BIND="0.0.0.0:${PORT}" "$GUNICORN" -c gunicorn.conf.py app:app --daemon
+    # gunicorn 自己管 daemonize，不需要 nohup；--pid 只给后台模式用（stop 时需要它），
+    # 配置里默认不设 pidfile，避免与 systemd 托管冲突，见 gunicorn.conf.py 注释
+    PORTAL_BIND="0.0.0.0:${PORT}" "$GUNICORN" -c gunicorn.conf.py app:app --daemon --pid "$PIDFILE"
     sleep 2
     pid="$(running_pid)"
     if [ -n "${pid:-}" ]; then

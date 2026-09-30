@@ -164,7 +164,8 @@ img,svg{display:block;}
 .card .card-manju{
   font-family:var(--manju);
   font-size:13px;color:var(--gold);
-  letter-spacing:.08em;margin-bottom:10px;opacity:.85;
+  /* 满文不设 letter-spacing：非零字距禁用连字，会破坏满文字形连写 */
+  margin-bottom:10px;opacity:.85;
 }
 .card p{font-size:13.5px;color:var(--text-2);line-height:1.9;flex:1;}
 .card-tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:16px;}

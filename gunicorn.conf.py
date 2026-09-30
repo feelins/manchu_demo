@@ -39,4 +39,9 @@ errorlog = os.path.join(LOG_DIR, "gunicorn-error.log")
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s %(D)sµs'
 
 # ---- 进程文件 ----
-pidfile = os.path.join(LOG_DIR, "gunicorn.pid")
+# 【不要在这里设 pidfile】systemd 托管时（Type=simple，前台运行）由 systemd 自己管 PID，
+# 若在此处写 pidfile，一旦进程异常退出留下残留文件，下次启动会被 gunicorn 判定为
+# "Already running on PID xxx" 而拒绝启动，systemd 随即陷入无限重启。
+# 实测踩过：残留 pidfile 导致服务重启计数上万次、页面全部不可访问。
+# 只有 `./run.sh start`（--daemon 后台兜底模式）需要 pid 文件，由该脚本用 --pid 传入。
+pidfile = None

@@ -9,14 +9,9 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/design-token.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
 
-<!-- 满文字体（本地内置，不依赖 CDN） -->
-<style>
-@font-face{
-  font-family:"Buleku";
-  src:url("{{ url_for('static', filename='fonts/001A-Buleku-R.ttf') }}") format("truetype");
-  font-weight:normal;font-style:normal;font-display:swap;
-}
-</style>
+<!-- 满文字体：内嵌字库（woff2 base64），不依赖额外的字体请求 -->
+<!-- 全站生效：所有页面模板都继承本文件，无需在每个页面重复引入 -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/manju-font.css') }}">
 
 {% block extra_css %}{% endblock %}
 </head>

@@ -34,14 +34,16 @@
   flex-shrink:0;
   writing-mode:vertical-lr;text-orientation:sideways-right;
   font-family:var(--manju);
-  font-size:40px;line-height:1.15;
+  font-size:40px;line-height:normal;   /* 对齐参考：normal，1.15 会压缩竖排字距 */
   color:var(--gold-light);
   opacity:.82;
   padding:16px 10px;
   border-right:1px solid var(--gold-dim);
   border-left:1px solid var(--gold-dim);
   height:210px;
-  letter-spacing:.06em;
+  width:84px;                          /* 对齐参考：给定列宽，避免竖排被挤成折行 */
+  /* 注意：满文竖排不能设 letter-spacing——非零字距会让浏览器禁用连字，
+     词的"牙/尾"接不上，表现就是字形断脚（与参考文件显示不一致的根本原因） */
   text-shadow:0 0 26px rgba(201,162,39,.45);
 }
 .hero-copy{flex:1;min-width:0;}
