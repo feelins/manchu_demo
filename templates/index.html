@@ -119,7 +119,11 @@
   <div class="workspace">
     <div class="workspace-head">
       <h2>工作平台</h2>
-      <p>仅对平台内部人员开放 · 需登录并获得相应权限</p>
+      <p>
+        <a class="ws-entry" href="{{ url_for('workbench.login') }}">
+          仅对平台内部人员开放 · 需登录并获得相应权限 →
+        </a>
+      </p>
     </div>
 
     <div class="workspace-grid">
@@ -138,6 +142,11 @@
         <p>面向满语句法研究，提供依存关系标注与可视化编辑，支持标注成果的保存与导出。</p>
         <span class="ws-tag">需登录 · 标注 / 研究</span>
       </div>
+    </div>
+
+    <!-- 入口统一走登录页：未登录不会直接进工作台 -->
+    <div class="ws-entry-row">
+      <a class="ws-entry-btn" href="{{ url_for('workbench.login') }}">进入工作台（需登录）→</a>
     </div>
   </div>
 </section>

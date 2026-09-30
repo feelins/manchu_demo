@@ -194,6 +194,26 @@
   color:var(--gold-pale);letter-spacing:.07em;
 }
 .workspace-head p{font-size:13px;color:rgba(250,248,245,.62);letter-spacing:.06em;}
+/* 工作平台的登录入口：整句可点，点击后进 /workbench/login */
+.workspace-head .ws-entry{
+  color:var(--gold-light);
+  border-bottom:1px dashed rgba(201,162,39,.55);
+  padding-bottom:2px;
+}
+.workspace-head .ws-entry:hover{color:#fff;border-bottom-color:#fff;}
+.ws-entry-row{
+  position:relative;z-index:2;
+  margin-top:26px;display:flex;justify-content:center;
+}
+.ws-entry-btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:11px 28px;border-radius:8px;
+  background:linear-gradient(100deg,var(--gold),var(--gold-light));
+  color:#2c1810;font-size:14px;font-weight:600;letter-spacing:.05em;
+  box-shadow:0 6px 20px rgba(201,162,39,.28);
+  transition:transform .18s,box-shadow .18s;
+}
+.ws-entry-btn:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(201,162,39,.38);}
 .workspace-grid{
   position:relative;z-index:2;
   display:grid;grid-template-columns:repeat(3,1fr);gap:20px;

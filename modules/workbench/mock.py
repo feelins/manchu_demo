@@ -10,11 +10,20 @@
 """
 
 # ---------------------------------------------------------------- 演示账号
-# 三个角色，覆盖 docs/11 §3.1 的权限矩阵；登录页直接选，无需密码
+# 三个角色，覆盖 docs/11 §3.1 的权限矩阵；登录需输入用户名 + 口令。
+#
+# 演示口令统一为 manju2026（明文写在 mock 数据里，只为演示时好记、好讲）。
+# 真实平台绝不能这样：口令必须加盐哈希存库、走校内单点登录，并有失败锁定与审计
+# ——见 docs/11 §5、docs/13。
+DEMO_PASSWORD = "manju2026"
+
 USERS = [
-    {"id": "zhang", "name": "张同学", "role": "annotator", "role_name": "标注员"},
-    {"id": "li", "name": "李老师", "role": "reviewer", "role_name": "审核员"},
-    {"id": "wang", "name": "王老师", "role": "admin", "role_name": "管理员"},
+    {"id": "zhang", "username": "zhang", "password": DEMO_PASSWORD,
+     "name": "张同学", "role": "annotator", "role_name": "标注员"},
+    {"id": "li", "username": "li", "password": DEMO_PASSWORD,
+     "name": "李老师", "role": "reviewer", "role_name": "审核员"},
+    {"id": "wang", "username": "wang", "password": DEMO_PASSWORD,
+     "name": "王老师", "role": "admin", "role_name": "管理员"},
 ]
 
 # 角色层级：数字越大权限越高（用于演示 RBAC 拦截）

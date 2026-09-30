@@ -116,14 +116,25 @@ def _common():
 # --------------------------------------------------------------- 登录 / 登出
 @workbench_bp.route("/login", methods=["GET", "POST"])
 def login():
+    """演示版登录：校验用户名 + 口令，按角色放行不同功能（RBAC 见 _role_required）。
+
+    口令校验只做字符串比对（mock 数据里明文存），仅为演示"门口有门禁"这件事；
+    真实平台应换成 DB + 加盐哈希 + 失败锁定，见 docs/11 §5。
+    """
+    error = ""
     if request.method == "POST":
-        uid = request.form.get("uid", "")
-        user = next((u for u in USERS if u["id"] == uid), None)
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        user = next((u for u in USERS
+                     if u["username"] == username and u["password"] == password), None)
         if not user:
-            return redirect(url_for("workbench.login"))
-        session["wb_user"] = user
-        return redirect(request.args.get("next") or url_for("workbench.index"))
-    return render_template("workbench/login.html", users=USERS, demo=DEMO_MODE)
+            error = "用户名或口令不正确，请使用下方的演示账号登录"
+        else:
+            # 口令不进 session：会话里只留展示需要的字段
+            session["wb_user"] = {k: v for k, v in user.items() if k != "password"}
+            nxt = request.form.get("next") or request.args.get("next")
+            return redirect(nxt or url_for("workbench.index"))
+    return render_template("workbench/login.html", users=USERS, demo=DEMO_MODE, error=error)
 
 
 @workbench_bp.route("/logout")
