@@ -592,6 +592,15 @@ tr.prow.fixed { background: #ecfdf5; }
     background: #fff;
 }
 
+/* 选中的身份（点击后只填用户名，不填口令） */
+.wb-account-item.is-active {
+    border-color: var(--gold, #b08d3f);
+    background: #fff;
+    box-shadow: 0 0 0 2px rgba(201, 162, 39, .18);
+}
+
+.wb-account-item.is-active .wb-account-fill { font-weight: 600; }
+
 .wb-account-main { flex: 1; min-width: 0; }
 
 .wb-account-line {

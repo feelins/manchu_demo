@@ -17,64 +17,20 @@
     </p>
   </div>
 
-  {% if demo %}
-  <div class="wb-banner">
-    <span>ℹ️</span>
-    <div>
-      <strong>这是纯演示版登录。</strong>
-      口令校验只在内存里比对 mock 数据（明文），<strong>不接数据库、不落盘任何数据</strong>；
-      登录态存在浏览器会话里，换浏览器或退出即失效。
-      真实平台还需要账号体系、加盐哈希口令或校内单点登录、失败锁定、RBAC、操作审计与备份
-      ——见 <code>docs/11-工作平台模块分析与初稿设计.md</code> 第 5 节。
-      演示账号与口令记录在 <code>docs/13-工作平台演示账号与登录说明.md</code>。
-    </div>
-  </div>
-  {% endif %}
-
   <div class="wb-login">
-    <!-- 左：登录表单 -->
-    <form method="post" class="wb-login-form">
-      <h3 class="wb-login-title">账号登录</h3>
-      <input type="hidden" name="next" value="{{ request.args.get('next','') }}">
-
-      <label class="wb-field">
-        <span class="wb-label">用户名</span>
-        <input class="wb-input" type="text" name="username" id="wb-username"
-               placeholder="如 zhang" autocomplete="username" required autofocus>
-      </label>
-
-      <label class="wb-field">
-        <span class="wb-label">口令</span>
-        <input class="wb-input" type="password" name="password" id="wb-password"
-               placeholder="演示口令：manju2026" autocomplete="current-password" required>
-      </label>
-
-      {% if error %}
-      <div class="wb-error">⚠️ {{ error }}</div>
-      {% endif %}
-
-      <button class="wb-btn primary wb-login-btn" type="submit">登录 →</button>
-      <p class="wb-login-foot">
-        演示账号见右侧，点击任意一行可自动填入。
-      </p>
-    </form>
-
-    <!-- 右：演示账号一览 -->
+    <!-- 左：身份切换 -->
     <div class="wb-accounts">
-      <h3 class="wb-login-title">演示账号（三个角色）</h3>
+      <h3 class="wb-login-title">选择身份</h3>
       <div class="wb-account-list">
         {% for u in users %}
-        <button type="button" class="wb-account-item role-{{ u.role }}"
-                data-username="{{ u.username }}" data-password="{{ u.password }}">
+        <button type="button" class="wb-account-item role-{{ u.role }}" data-username="{{ u.username }}">
           <div class="wb-avatar">{{ u.name[0] }}</div>
           <div class="wb-account-main">
             <div class="wb-account-line">
               <strong>{{ u.name }}</strong>
               <span class="wb-role role-{{ u.role }}">{{ u.role_name }}</span>
             </div>
-            <div class="wb-account-cred">
-              用户名 <code>{{ u.username }}</code> · 口令 <code>{{ u.password }}</code>
-            </div>
+            <div class="wb-account-cred">用户名 <code>{{ u.username }}</code></div>
             <ul class="wb-perm">
               {% if u.role == 'annotator' %}
                 <li>✅ 进入三个标注工具并提交</li>
@@ -90,27 +46,63 @@
               {% endif %}
             </ul>
           </div>
-          <span class="wb-account-fill">填入</span>
+          <span class="wb-account-fill">选用</span>
         </button>
         {% endfor %}
       </div>
 
       <div class="wb-tip">
-        💡 想看权限拦截的效果：用<strong>标注员</strong>（zhang）登录后访问
+        💡 想看权限拦截的效果：用<strong>标注员</strong>登录后访问
         <code>/workbench/review</code>，会被挡在门外（403）。
       </div>
     </div>
+
+    <!-- 右：登录表单（不展示任何口令，验收演示时按文档输入） -->
+    <form method="post" class="wb-login-form">
+      <h3 class="wb-login-title">账号登录</h3>
+      <input type="hidden" name="next" value="{{ request.args.get('next','') }}">
+
+      <label class="wb-field">
+        <span class="wb-label">用户名</span>
+        <input class="wb-input" type="text" name="username" id="wb-username"
+               placeholder="请选择左侧身份，或手动输入" autocomplete="username" required autofocus>
+      </label>
+
+      <label class="wb-field">
+        <span class="wb-label">口令</span>
+        <input class="wb-input" type="password" name="password" id="wb-password"
+               placeholder="请输入口令" autocomplete="current-password" required>
+      </label>
+
+      {% if error %}
+      <div class="wb-error">⚠️ {{ error }}</div>
+      {% endif %}
+
+      <button class="wb-btn primary wb-login-btn" type="submit">登录 →</button>
+
+      <p class="wb-login-foot">
+        {% if demo %}
+        演示账号与口令记录在
+        <code>docs/13-工作平台演示账号与登录说明.md</code>，登录页不展示——
+        验收演示时按文档输入即可。
+        {% else %}
+        忘记口令请联系平台管理员。
+        {% endif %}
+      </p>
+    </form>
   </div>
 </section>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  // 点击演示账号，自动填入用户名与口令（仅为方便演示，不做任何校验）
-  document.querySelectorAll('.wb-account-item').forEach(function (btn) {
+  // 点击身份卡片：只填入用户名并高亮，口令需自行输入（登录页不展示口令）
+  var cards = document.querySelectorAll('.wb-account-item');
+  cards.forEach(function (btn) {
     btn.addEventListener('click', function () {
+      cards.forEach(function (b) { b.classList.remove('is-active'); });
+      btn.classList.add('is-active');
       document.getElementById('wb-username').value = btn.dataset.username || '';
-      document.getElementById('wb-password').value = btn.dataset.password || '';
       document.getElementById('wb-password').focus();
     });
   });
