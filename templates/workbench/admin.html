@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}管理后台 · 工作台{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/workbench.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="section wb-section">
+  <div class="wb-topbar">
+    <div>
+      <div class="section-eyebrow">Admin</div>
+      <h2 class="section-title">管理后台</h2>
+    </div>
+    <div class="wb-who">
+      <div class="wb-avatar sm">{{ user.name[0] }}</div>
+      <span class="wb-role role-{{ user.role }}">{{ user.role_name }}</span>
+      <a class="wb-btn ghost" href="{{ url_for('workbench.index') }}">← 回工作台</a>
+    </div>
+  </div>
+
+  <div class="wb-banner compact">
+    <span>🛠️</span>
+    <div>
+      管理员视角：左侧把<strong>未指派任务</strong>直接派给标注员，下方是团队实时工作量与
+      全量操作日志（谁在何时做了什么）。数据均来自 <code>data/workbench.db</code>。
+    </div>
+  </div>
+
+  <!-- ==================== 团队看板 ==================== -->
+  <h3 class="wb-h3">团队看板</h3>
+  <div class="wb-members">
+    {% for m in members %}
+    <div class="wb-member role-{{ m.role }}">
+      <div class="wb-member-head">
+        <div class="wb-avatar">{{ m.name[0] }}</div>
+        <div>
+          <div class="wb-who-name">{{ m.name }}</div>
+          <div class="wb-role role-{{ m.role }}">{{ m.role_name }}</div>
+        </div>
+      </div>
+      <div class="wb-kpis">
+        <div><b>{{ m.doing }}</b><span>手头</span></div>
+        <div><b>{{ m.waiting }}</b><span>待我审</span></div>
+        <div><b>{{ m.passed }}</b><span>已通过</span></div>
+        <div><b>{{ m.subs }}</b><span>提交数</span></div>
+        <div><b>{{ m.reviewed }}</b><span>审核数</span></div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- ==================== 任务指派 ==================== -->
+  <h3 class="wb-h3">任务指派</h3>
+  <table class="wb-table">
+    <thead>
+      <tr><th>编号</th><th>类型</th><th>内容</th><th>当前负责人</th><th>状态</th><th>指派给</th><th>操作</th></tr>
+    </thead>
+    <tbody>
+      {% for t in tasks %}
+      <tr class="{{ 'is-unassigned' if not t.assignee }}">
+        <td class="mono">{{ t.id }}</td>
+        <td>{{ t.kind_name }}</td>
+        <td>{{ t.title }}</td>
+        <td>{{ t.assignee_name }}</td>
+        <td><span class="wb-badge {{ t.badge }}">{{ t.status }}</span></td>
+        <td>
+          <select class="wb-input sm" data-assign-for="{{ t.id }}">
+            <option value="">— 未指派 —</option>
+            {% for a in annotators %}
+            <option value="{{ a.username }}" {{ 'selected' if a.username == t.assignee }}>{{ a.name }}</option>
+            {% endfor %}
+          </select>
+        </td>
+        <td><button class="wb-btn tiny primary" data-assign="{{ t.id }}">改派</button></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- ==================== 操作日志 ==================== -->
+  <h3 class="wb-h3">操作日志（最近 {{ logs | length }} 条）</h3>
+  <table class="wb-table">
+    <thead><tr><th>时间</th><th>人员</th><th>动作</th><th>说明</th><th>任务</th></tr></thead>
+    <tbody>
+      {% for l in logs %}
+      <tr>
+        <td class="mono dim">{{ l.ts }}</td>
+        <td>{{ l.name }} <small class="dim">{{ l.role }}</small></td>
+        <td><span class="wb-badge wait">{{ l.action }}</span></td>
+        <td class="dim">{{ l.detail }}</td>
+        <td class="mono dim">{{ l.task_id or '—' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="wb-empty-row">暂无操作记录。</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  window.WB_ASSIGN_URL = {{ url_for('workbench.assign') | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/workbench.js') }}"></script>
+{% endblock %}

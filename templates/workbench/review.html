@@ -23,8 +23,8 @@
   <div class="wb-banner compact">
     <span>ℹ️</span>
     <div>
-      演示：审核结果只改变本机会话里的状态，<strong>不会真的验收任何数据</strong>。
-      通过/驳回后回工作台可以看到统计与列表变化。
+      审核结果<strong>落 SQLite</strong>并回写任务状态：通过的任务不再出现在标注员待办里；
+      打回需填写意见，意见会出现在标注员的任务清单与标注页上。点击「查看详情」可核对提交内容。
     </div>
   </div>
 
@@ -34,16 +34,17 @@
     {% for s in pending %}
     <div class="wb-review" data-id="{{ s.id }}">
       <div class="wb-review-main">
-        <div class="wb-review-title">{{ s.title }}</div>
+        <div class="wb-review-title">{{ s.title }}{% if s.attempt and s.attempt > 1 %} <span class="wb-pill">第 {{ s.attempt }} 稿</span>{% endif %}</div>
         <div class="wb-review-meta">
-          <span class="wb-badge">{{ s.type }}</span>
-          <span>{{ s.user }}</span>
-          <span class="mono dim">{{ s.time }}</span>
+          <span class="wb-badge">{{ s.kind_name }}</span>
+          <span>{{ user_names.get(s.user, s.user) }}</span>
+          <span class="mono dim">{{ s.created_at }}</span>
           <span class="mono dim">{{ s.id }}</span>
         </div>
       </div>
       <div class="wb-review-actions">
-        <input class="wb-input inline" placeholder="驳回意见（可选）">
+        <button class="wb-btn ghost wb-detail-btn" data-detail="{{ s.id }}">查看详情</button>
+        <input class="wb-input inline" placeholder="驳回意见（必须）">
         <button class="wb-btn danger" data-act="reject">驳回</button>
         <button class="wb-btn primary" data-act="approve">通过</button>
       </div>
@@ -57,27 +58,44 @@
   <h3 class="wb-h3">已处理（{{ reviewed | length }}）</h3>
   <table class="wb-table">
     <thead>
-      <tr><th>编号</th><th>类型</th><th>内容</th><th>提交人</th><th>状态</th><th>意见</th></tr>
+      <tr><th>编号</th><th>类型</th><th>内容</th><th>提交人</th><th>处理时间</th><th>状态</th><th>意见</th><th>详情</th></tr>
     </thead>
     <tbody>
       {% for s in reviewed %}
       <tr>
         <td class="mono">{{ s.id }}</td>
-        <td>{{ s.type }}</td>
+        <td>{{ s.kind_name }}</td>
         <td>{{ s.title }}</td>
-        <td>{{ s.user }}</td>
+        <td>{{ user_names.get(s.user, s.user) }}</td>
+        <td class="mono dim">{{ s.reviewed_at or s.created_at }}</td>
         <td><span class="wb-badge {{ 'ok' if s.status == '已通过' else 'bad' }}">{{ s.status }}</span></td>
         <td class="dim">{{ s.comment or '—' }}</td>
+        <td><button class="wb-btn tiny ghost wb-detail-btn" data-detail="{{ s.id }}">详情</button></td>
       </tr>
+      {% else %}
+      <tr><td colspan="8" class="wb-empty-row">还没有已处理的提交。</td></tr>
       {% endfor %}
     </tbody>
   </table>
 </section>
+
+<!-- ==================== 提交详情弹层 ==================== -->
+<div class="wb-modal" id="detailModal" hidden>
+  <div class="wb-modal-mask" id="dmMask"></div>
+  <div class="wb-modal-panel">
+    <div class="wb-modal-head">
+      <strong id="dmTitle">提交详情</strong>
+      <button class="wb-btn ghost" id="dmClose">✕</button>
+    </div>
+    <div class="wb-modal-body" id="dmBody"><div class="wb-empty">加载中…</div></div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
   window.WB_REVIEW_URL = {{ url_for('workbench.review_decide') | tojson }};
+  window.WB_API_SUB = {{ url_for('workbench.api_submission', sid='__ID__') | tojson }};
 </script>
 <script src="{{ url_for('static', filename='js/workbench.js') }}"></script>
 {% endblock %}

@@ -20,6 +20,20 @@
         <div class="wb-who-name">{{ user.name }}</div>
         <div class="wb-role role-{{ user.role }}">{{ user.role_name }}</div>
       </div>
+      {% if demo and switch_users %}
+      <details class="wb-switch">
+        <summary>切换身份</summary>
+        <div class="wb-switch-menu">
+          {% for su in switch_users %}
+          <a class="wb-switch-item role-{{ su.role }}" href="{{ url_for('workbench.switch', username=su.username) }}">
+            <span class="wb-avatar xsm">{{ su.name[0] }}</span>
+            <span>{{ su.name }}</span>
+            <small>{{ su.role_name }}</small>
+          </a>
+          {% endfor %}
+        </div>
+      </details>
+      {% endif %}
       <a class="wb-btn ghost" href="{{ url_for('workbench.logout') }}">退出</a>
     </div>
   </div>
@@ -28,8 +42,8 @@
   <div class="wb-banner compact">
     <span>ℹ️</span>
     <div>
-      演示模式：数据为 mock，提交与审核记在<strong>服务端内存</strong>里（各角色共享，重启门户即恢复初始），
-      <strong>不落盘、不上传</strong>。
+      演示模式：数据已<strong>落 SQLite</strong>（<code>data/workbench.db</code>），不再存内存——
+      <strong>换账号、换浏览器、重启门户</strong>看到的都是同一份流转数据，三个角色真正在协作。
     </div>
     <button class="wb-btn ghost" id="btnReset">↺ 重置</button>
   </div>
@@ -37,23 +51,29 @@
 
   <!-- ==================== 统计 ==================== -->
   <div class="wb-stats">
-    <div class="wb-stat">
-      <div class="wb-stat-num">{{ stats.total }}</div>
-      <div class="wb-stat-label">提交总数</div>
-    </div>
-    <div class="wb-stat warn">
-      <div class="wb-stat-num">{{ stats.pending }}</div>
-      <div class="wb-stat-label">待审核</div>
-    </div>
-    <div class="wb-stat ok">
-      <div class="wb-stat-num">{{ stats.passed }}</div>
-      <div class="wb-stat-label">已通过</div>
-    </div>
-    <div class="wb-stat">
-      <div class="wb-stat-num">{{ stats.rate }}%</div>
-      <div class="wb-stat-label">通过率</div>
-    </div>
+    <div class="wb-stat"><div class="wb-stat-num">{{ stats.total }}</div><div class="wb-stat-label">任务总数</div></div>
+    <div class="wb-stat"><div class="wb-stat-num">{{ stats.wait }}</div><div class="wb-stat-label">待领取</div></div>
+    <div class="wb-stat"><div class="wb-stat-num">{{ stats.doing }}</div><div class="wb-stat-label">标注中</div></div>
+    <div class="wb-stat warn"><div class="wb-stat-num">{{ stats.pending }}</div><div class="wb-stat-label">待审核</div></div>
+    <div class="wb-stat ok"><div class="wb-stat-num">{{ stats.passed }}</div><div class="wb-stat-label">已通过</div></div>
+    <div class="wb-stat"><div class="wb-stat-num">{{ stats.rate }}%</div><div class="wb-stat-label">通过率</div></div>
   </div>
+
+  <!-- ==================== 我的待办（按角色） ==================== -->
+  {% if todos %}
+  <h3 class="wb-h3">我的待办</h3>
+  <div class="wb-todos">
+    {% for t in todos %}
+    <a class="wb-todo todo-{{ t.kind }}" href="{{ url_for(t.url) }}">
+      <div class="wb-todo-num">{{ t.count }}</div>
+      <div class="wb-todo-body">
+        <div class="wb-todo-label">{{ t.label }}</div>
+        <div class="wb-todo-hint">{{ t.hint }}</div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
 
   <!-- ==================== 工具入口 ==================== -->
   <h3 class="wb-h3">标注工具</h3>
@@ -91,7 +111,43 @@
       <div class="wb-tool-meta">你的角色：{{ user.role_name }}</div>
     </div>
     {% endif %}
+    {% if user.role == 'admin' %}
+    <a class="wb-tool accent" href="{{ url_for('workbench.admin') }}">
+      <div class="wb-tool-icon">🛠️</div>
+      <div class="wb-tool-title">管理后台</div>
+      <div class="wb-tool-desc">任务指派、团队看板、操作日志</div>
+      <div class="wb-tool-meta">进行中 {{ stats.doing }} 项</div>
+    </a>
+    {% endif %}
   </div>
+
+  <!-- ==================== 我的任务 ==================== -->
+  <h3 class="wb-h3">任务清单</h3>
+  <table class="wb-table">
+    <thead>
+      <tr><th>编号</th><th>类型</th><th>内容</th><th>负责人</th><th>状态</th><th>审核意见</th><th>操作</th></tr>
+    </thead>
+    <tbody>
+      {% for t in my_tasks %}
+      <tr>
+        <td class="mono">{{ t.id }}</td>
+        <td>{{ t.kind_name }}</td>
+        <td>{{ t.title }}</td>
+        <td>{{ t.assignee_name }}</td>
+        <td><span class="wb-badge {{ t.badge }}">{{ t.status }}</span></td>
+        <td class="dim">{% if t.comment %}⚠️ {{ t.comment }}{% else %}—{% endif %}</td>
+        <td class="wb-ops">
+          {% if t.claimable %}
+            <button class="wb-btn tiny primary" data-claim="{{ t.id }}">领取</button>
+          {% endif %}
+          <a class="wb-btn tiny" href="{{ t.url }}">{{ '打开' if t.status != '已通过' else '查看' }}</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="wb-empty-row">当前没有属于你的任务。</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
 
   <!-- ==================== 最近提交 ==================== -->
   <h3 class="wb-h3">最近提交</h3>
@@ -103,22 +159,43 @@
       {% for s in subs %}
       <tr>
         <td class="mono">{{ s.id }}</td>
-        <td>{{ s.type }}</td>
-        <td>{{ s.title }}</td>
-        <td>{{ s.user }}</td>
-        <td class="mono dim">{{ s.time }}</td>
+        <td>{{ s.kind_name }}</td>
+        <td>{{ s.title }}{% if s.attempt and s.attempt > 1 %} <span class="wb-pill">第 {{ s.attempt }} 稿</span>{% endif %}</td>
+        <td>{{ user_names.get(s.user, s.user) }}</td>
+        <td class="mono dim">{{ s.created_at }}</td>
         <td><span class="wb-badge {{ 'ok' if s.status == '已通过' else ('bad' if s.status == '已驳回' else 'wait') }}">{{ s.status }}</span></td>
         <td class="dim">{{ s.comment or '—' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="wb-empty-row">还没有提交记录。</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- ==================== 操作日志（管理员） ==================== -->
+  {% if user.role == 'admin' and logs %}
+  <h3 class="wb-h3">操作日志</h3>
+  <table class="wb-table">
+    <thead><tr><th>时间</th><th>人员</th><th>动作</th><th>说明</th></tr></thead>
+    <tbody>
+      {% for l in logs %}
+      <tr>
+        <td class="mono dim">{{ l.ts }}</td>
+        <td>{{ l.name }}</td>
+        <td><span class="wb-badge wait">{{ l.action }}</span></td>
+        <td class="dim">{{ l.detail }}</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
+  {% endif %}
 </section>
 {% endblock %}
 
 {% block extra_js %}
 <script>
   window.WB_RESET_URL = {{ url_for('workbench.reset') | tojson }};
+  window.WB_CLAIM_URL = {{ url_for('workbench.claim') | tojson }};
 </script>
 <script src="{{ url_for('static', filename='js/workbench.js') }}"></script>
 {% endblock %}

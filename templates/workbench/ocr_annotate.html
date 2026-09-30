@@ -44,23 +44,37 @@
       <code>/data/manju_dataset/images/raw</code>，此处为演示切片）。
       「AI 画框 / AI 预测」为模拟：真实检测权重
       <code>exp_0512_2006/weights/best.pt</code> 已在本机，服务尚未部署。
-      提交只记进会话，不落盘。
+      提交与审核<strong>落 SQLite</strong>，审核员、管理员看的是同一份数据。
     </div>
   </div>
 
+  {% if task and task.status == '已打回' and task.comment %}
+  <div class="wb-banner bad">
+    <span>⚠️</span>
+    <div>该任务被审核员<strong>打回</strong>，请按以下意见修改后重新提交：<strong>{{ task.comment }}</strong></div>
+  </div>
+  {% endif %}
+
   <div class="wb-annot-v8">
-    <!-- ==================== 左：下发任务列表（保留） ==================== -->
+    <!-- ==================== 左：下发任务列表 ==================== -->
     <aside class="wb-tasklist">
       <div class="wb-panel-title">我的任务（{{ tasks|length }}）</div>
       {% for t in tasks %}
-      <button class="wb-task {% if t.id == task.id %}active{% endif %}" data-task="{{ t.id }}">
+      <div class="wb-task {% if t.id == task.id %}active{% endif %} {{ 'claimable' if t.claimable else '' }}"
+           data-task="{{ t.id }}">
         <img src="{{ url_for('static', filename=t.image) }}" alt="{{ t.file }}">
         <div class="wb-task-meta">
           <span class="mono">{{ t.file }}</span>
           <span class="wb-task-sub">{{ t.size }} · 第 {{ t.page }} 页 · {{ t.boxes|length }} 框</span>
-          <span class="wb-badge {{ 'wait' if t.status == '待标注' else 'ok' }}">{{ t.status }}</span>
+          <span class="wb-badge {{ t.badge }}">{{ t.status }}</span>
         </div>
-      </button>
+        {% if t.status == '已打回' and t.comment %}
+        <div class="wb-task-note">⚠️ {{ t.comment }}</div>
+        {% endif %}
+        {% if t.claimable %}
+        <button class="wb-btn tiny primary wb-claim" data-claim="{{ t.id }}">领取</button>
+        {% endif %}
+      </div>
       {% endfor %}
     </aside>
 
@@ -133,8 +147,14 @@
 {% block extra_js %}
 <script>
   window.WB_TASKS = {{ tasks | tojson }};
-  window.WB_CURRENT = {{ task.id | tojson }};
+  window.WB_CURRENT = {{ (task.id if task else '') | tojson }};
   window.WB_SUBMIT_URL = {{ url_for('workbench.ocr_submit') | tojson }};
+  window.WB_CLAIM_URL = {{ url_for('workbench.claim') | tojson }};
+  window.WB_TASK = {{ ({
+    'id': task.id if task else '',
+    'editable': task.editable if task else false,
+    'status': task.status if task else ''
+  }) | tojson }};
 </script>
 <script src="{{ url_for('static', filename='js/workbench.js') }}"></script>
 {% endblock %}

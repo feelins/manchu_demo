@@ -701,3 +701,78 @@ tr.prow.fixed { background: #ecfdf5; }
     .wb-annot-v8 { grid-template-columns: 1fr; }
     .wb-canvas-v8 { max-height: 52vh; }
 }
+
+/* ============================================================
+   2026-09-30 新增：真实协作所需的 UI（待办 / 切换身份 / 弹层 / 管理看板）
+   ============================================================ */
+
+/* 顶栏：演示身份切换 */
+.wb-who { gap: 10px; }
+.wb-switch { position: relative; }
+.wb-switch > summary { list-style: none; cursor: pointer; font-size: 13px; color: var(--gold, #b08d3f); user-select: none; }
+.wb-switch > summary::-webkit-details-marker { display: none; }
+.wb-switch-menu {
+    position: absolute; right: 0; top: 130%; z-index: 50;
+    background: #fff; border: 1px solid var(--line, #e5e7eb); border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.12); padding: 6px; min-width: 168px;
+}
+.wb-switch-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; color: #1f2937; text-decoration: none; font-size: 13px; }
+.wb-switch-item:hover { background: #f7f4ec; }
+.wb-switch-item small { margin-left: auto; color: var(--muted, #6b7280); }
+.wb-avatar.xsm { width: 24px; height: 24px; font-size: 12px; }
+
+/* 我的待办卡片 */
+.wb-todos { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-bottom: 4px; }
+.wb-todo {
+    display: flex; align-items: center; gap: 14px; padding: 16px;
+    background: #fff; border: 1px solid var(--line, #e5e7eb); border-radius: 12px;
+    text-decoration: none; color: #1f2937; transition: transform .12s, box-shadow .12s, border-color .12s;
+}
+.wb-todo:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,.08); border-color: var(--gold, #b08d3f); }
+.wb-todo-num { font-size: 30px; font-weight: 700; line-height: 1; min-width: 42px; text-align: center; color: var(--gold, #b08d3f); }
+.todo-bad .wb-todo-num { color: #dc2626; }
+.todo-ok .wb-todo-num { color: #059669; }
+.todo-wait .wb-todo-num { color: #d97706; }
+.wb-todo-label { font-weight: 600; }
+.wb-todo-hint { font-size: 12px; color: var(--muted, #6b7280); margin-top: 2px; }
+
+/* 通用小料 */
+.wb-pill { font-size: 11px; background: #f0e7d0; color: #8a6d2a; border-radius: 999px; padding: 1px 7px; }
+.wb-empty-row { text-align: center; color: var(--muted, #6b7280); padding: 22px 0; }
+.wb-ops { white-space: nowrap; }
+
+/* OCR 任务列表：打回意见、领取按钮 */
+.wb-task-note { font-size: 11.5px; color: #b91c1c; background: #fff1f1; border: 1px solid #f3c7c7; border-radius: 6px; padding: 5px 7px; margin-top: 6px; line-height: 1.4; }
+.wb-task { position: relative; }
+.wb-claim { position: absolute; right: 8px; bottom: 8px; }
+.wb-banner.bad { background: #fff1f1; border-color: #f3c7c7; color: #7f1d1d; }
+
+/* 校对/依存页任务状态条 */
+.wb-task-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 9px 14px; background: #fbfaf6; border: 1px solid var(--line, #e5e7eb); border-radius: 10px; font-size: 13px; margin-bottom: 14px; }
+.wb-warn { color: #b91c1c; }
+
+/* 管理后台：团队看板 */
+.wb-members { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.wb-member { background: #fff; border: 1px solid var(--line, #e5e7eb); border-radius: 12px; padding: 16px; }
+.wb-member-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.wb-kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; text-align: center; }
+.wb-kpis > div { display: flex; flex-direction: column; }
+.wb-kpis b { font-size: 20px; color: var(--gold, #b08d3f); }
+.wb-kpis span { font-size: 11px; color: var(--muted, #6b7280); }
+tr.is-unassigned { background: #fffaf0; }
+.wb-input.sm { padding: 4px 8px; font-size: 13px; }
+
+/* 提交详情弹层 */
+.wb-modal { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; }
+.wb-modal[hidden] { display: none; }
+.wb-modal-mask { position: absolute; inset: 0; background: rgba(15,23,42,.45); }
+.wb-modal-panel { position: relative; width: min(640px, 92vw); max-height: 84vh; overflow: auto; background: #fff; border-radius: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+.wb-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--line, #e5e7eb); position: sticky; top: 0; background: #fff; }
+.wb-modal-body { padding: 18px; }
+.wb-dm-meta { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 10px; font-size: 13px; color: var(--muted, #6b7280); }
+.wb-dm-comment { background: #fff1f1; border: 1px solid #f3c7c7; color: #7f1d1d; border-radius: 8px; padding: 8px 12px; font-size: 13px; margin-bottom: 12px; }
+.wb-dm-img { margin-bottom: 12px; }
+.wb-dm-img img { max-width: 100%; max-height: 320px; border: 1px solid var(--line, #e5e7eb); border-radius: 8px; }
+.wb-dm-table td.wb-manju { font-family: 'BulekuAnnot', 'Buleku', serif; font-size: 18px; }
+.wb-dm-raw pre { background: #f8f8f8; border-radius: 8px; padding: 12px; font-size: 12px; overflow: auto; }
+

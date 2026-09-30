@@ -25,10 +25,22 @@
     <div>
       演示：句子与依存关系是<strong>预置 mock</strong>（不求语言学精确），
       用来演示"分词 → 依存关系 → 导出 CoNLL-U → 提交"的流程。
-      真实工具 <code>manchu_ud_annotator.html</code> 可交互拖拽，见
-      <code>07工作平台/0703依存语法可视化/</code>。
+      提交与审核<strong>落 SQLite</strong>，审核员、管理员看的是同一份数据。
     </div>
   </div>
+
+  {% if task %}
+  <div class="wb-task-strip">
+    <span class="wb-badge {{ task.badge }}">{{ task.status }}</span>
+    <span>{{ task.id }} · {{ task.title }}</span>
+    {% if task.status == '已打回' and task.comment %}
+      <span class="wb-warn">被打回：{{ task.comment }}</span>
+    {% endif %}
+    {% if not task.editable %}
+      <span class="wb-warn">该任务当前（{{ task.status }}）不可编辑。</span>
+    {% endif %}
+  </div>
+  {% endif %}
 
   <div class="wb-ud">
     <!-- ==================== 句子列表 ==================== -->

@@ -24,9 +24,22 @@
     <span>ℹ️</span>
     <div>
       演示：句对取自真实语料切片，<strong>错误是人为插入的</strong>（空行 / 多余空段落 / 汉满不对应），
-      用来演示"校验 → 定位 → 修复 → 提交"这条链路。提交不落盘。
+      用来演示"校验 → 定位 → 修复 → 提交"这条链路。提交与审核<strong>落 SQLite</strong>。
     </div>
   </div>
+
+  {% if task %}
+  <div class="wb-task-strip">
+    <span class="wb-badge {{ task.badge }}">{{ task.status }}</span>
+    <span>{{ task.id }} · {{ task.title }}</span>
+    {% if task.status == '已打回' and task.comment %}
+      <span class="wb-warn">被打回：{{ task.comment }}</span>
+    {% endif %}
+    {% if not task.editable %}
+      <span class="wb-warn">该任务当前（{{ task.status }}）不可编辑。</span>
+    {% endif %}
+  </div>
+  {% endif %}
 
   <div class="wb-toolbar">
     <button class="wb-btn" id="btnPrev">⬆️ 上一处</button>

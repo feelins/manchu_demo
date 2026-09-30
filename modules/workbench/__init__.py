@@ -1,29 +1,39 @@
-"""工作平台（**演示版**蓝图）
+"""工作平台（需登录）· 蓝图
 
-这一版的目标：把「登录 → 标注/校对 → 提交 → 审核 → 统计变化 → 权限拦截」
-这条完整流程**演出来**，用来讲清楚工作平台是什么、怎么操作。
+2026-09-30 升级：数据从「进程内存 mock」改为 **SQLite 落盘**（见 db.py 顶部说明）。
 
-刻意不做的事（真实平台必须补，见 docs/11 第 5 节）：
-· 不接数据库 —— 提交/审核记录存 Flask session，换浏览器即空
-· 不做真实上传下载 —— 标注结果不落盘，导出只在前端用 Blob 生成
-· 不做真鉴权 —— 登录页直接选身份，无口令校验
+改之前的问题不是"数据看起来假"，而是**三个角色之间根本没有真实的协作**：
+  · 标注员提交只写进本进程列表，换账号/重启/落到另一个 gunicorn worker 就看不见；
+  · 任务状态不随提交变化，交完那张图还是"待标注"；
+  · 打回之后没有去处，标注员看不到"我被谁打回了、为什么"。
 
-数据全部来自 mock.py；演示底稿（古籍图、句对）取自语料切片，看起来像真的。
+现在是一条真的流水线，三个角色各有各的活，且互相看得见：
+
+    标注员 张同学   领取 → 标注 → 提交 ────────────┐
+                        ▲                          ▼
+                        └── 返工重提 ←── 打回 ── 审核员 李老师（通过 / 打回，留意见）
+                                                    ▲
+                          管理员 王老师：指派任务 / 团队看板 / 操作日志
+
+权限仍走 RBAC（annotator < reviewer < admin），且**数据层也做归属校验**：
+不是指派给你的任务，前端藏了按钮、后端也会拒（见 db.submit_task）。
 """
 
-import datetime
 from functools import wraps
 
 from flask import (Blueprint, jsonify, redirect, render_template, request,
                    session, url_for)
 
-from .mock import (BASE_SUBMISSIONS, OCR_TASKS, PROOFREAD_ROWS, ROLE_LEVEL,
-                   UD_SENTENCES, USERS)
+from . import db
+from .mock import ROLE_LEVEL, USERS
 
-# 演示模式开关：页面上据此常驻提示"数据不落盘"
+# 演示模式开关：页面上据此显示"演示"提示与身份切换入口
 DEMO_MODE = True
 
 workbench_bp = Blueprint("workbench", __name__, url_prefix="/workbench")
+
+# 首次导入即建表并写入演示种子（幂等：已有数据则跳过）
+db.init_db()
 
 
 # --------------------------------------------------------------- 会话与权限
@@ -32,7 +42,7 @@ def current_user():
 
 
 def _login_required(view):
-    """未登录一律回登录页（演示版 RBAC 的第一道门）"""
+    """未登录一律回登录页（RBAC 的第一道门）"""
     @wraps(view)
     def wrapper(*args, **kwargs):
         if not current_user():
@@ -60,66 +70,66 @@ def _role_required(role):
     return deco
 
 
-# --------------------------------------------------------------- 提交记录（session）
-# 提交记录放在**模块级列表**里，而不是各自的 session：
-# 否则标注员（A 浏览器）提交后，审核员（B 浏览器）根本看不到，"提交→审核"闭环演示不出来。
-# 代价是所有访客共享一份演示数据——演示场景无所谓，反而更像真系统。
-# 真实平台这里应换成数据库（见 docs/11 §3.6）。
-_SUBS = [dict(s) for s in BASE_SUBMISSIONS]
+# --------------------------------------------------------------- 可见性规则
+def _visible_tasks(user):
+    """该用户能看到的任务：
+       管理员/审核员 -> 全部；标注员 -> 我负责的 + 还没人领的（可领取）"""
+    if user["role"] in ("admin", "reviewer"):
+        return db.list_tasks()
+    me = user["username"]
+    return [t for t in db.list_tasks() if t["assignee"] == me or not t["assignee"]]
 
 
-def _subs():
-    return _SUBS
+def _editable(task, user):
+    """这个任务此刻能不能编辑（前端按钮显隐用；后端 db 里还有一道硬校验）"""
+    if not task:
+        return False
+    if task["status"] in (db.T_PASS, db.T_REVIEW):
+        return False
+    return (not task["assignee"]) or task["assignee"] == user["username"] \
+        or user["role"] == "admin"
 
 
-def _save_subs(subs):
-    _SUBS[:] = subs
-
-
-def _add_submission(kind, title, status="待审核"):
-    subs = _subs()
-    sub = {
-        "id": f"S-{datetime.datetime.now():%y%m%d}-{len(subs) + 1:03d}",
-        "type": kind,
-        "title": title,
-        "user": current_user()["name"],
-        "time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "status": status,
-        "comment": "",
-    }
-    subs.insert(0, sub)
-    _save_subs(subs)
-    return sub
-
-
-def _stats():
-    subs = _subs()
-    passed = sum(1 for s in subs if s["status"] == "已通过")
-    rejected = sum(1 for s in subs if s["status"] == "已驳回")
-    pending = sum(1 for s in subs if s["status"] == "待审核")
-    done = passed + rejected
-    return {
-        "total": len(subs),
-        "pending": pending,
-        "passed": passed,
-        "rejected": rejected,
-        "done": done,
-        "rate": round(passed / done * 100) if done else 0,
-    }
+def _decorate(task, user):
+    """给任务补上展示字段：负责人中文名、可编辑性、状态样式类"""
+    names = {u["username"]: u["name"] for u in USERS}
+    task["assignee_name"] = names.get(task["assignee"], "未指派") if task["assignee"] else "未指派"
+    task["editable"] = _editable(task, user)
+    task["claimable"] = (not task["assignee"] and task["status"] == db.T_WAIT) \
+        or (task["assignee"] == user["username"] and task["status"] == db.T_REJECT)
+    task["can_review"] = user["role"] in ("reviewer", "admin")
+    task["badge"] = {"待领取": "wait", "标注中": "doing", "待审核": "wait",
+                     "已通过": "ok", "已打回": "bad"}.get(task["status"], "")
+    task["boxes"] = task["payload"] if task["kind"] == "ocr" else []
+    task["editable"] = _editable(task, user)
+    task["url"] = {
+        "ocr": url_for("workbench.ocr_annotate", task=task["id"]),
+        "proofread": url_for("workbench.proofread"),
+        "ud": url_for("workbench.ud_annotator"),
+    }.get(task["kind"], "#")
+    return task
 
 
 def _common():
     """每个页面都要带的公共变量"""
-    return {"user": current_user(), "stats": _stats(), "demo": DEMO_MODE}
+    user = current_user()
+    return {
+        "user": user,
+        "user_names": {u["username"]: u["name"] for u in USERS},
+        "stats": db.stats(),
+        "todos": db.todos(user["username"], user["role"]) if user else [],
+        "demo": DEMO_MODE,
+        "switch_users": [u for u in USERS if not user or u["username"] != user["username"]],
+    }
 
 
 # --------------------------------------------------------------- 登录 / 登出
 @workbench_bp.route("/login", methods=["GET", "POST"])
 def login():
-    """演示版登录：校验用户名 + 口令，按角色放行不同功能（RBAC 见 _role_required）。
+    """登录：校验用户名 + 口令，按角色放行不同功能（RBAC 见 _role_required）。
 
-    口令校验只做字符串比对（mock 数据里明文存），仅为演示"门口有门禁"这件事；
-    真实平台应换成 DB + 加盐哈希 + 失败锁定，见 docs/11 §5。
+    口令校验只做字符串比对（mock 数据里明文存），仅为演示"门口有门禁"；
+    真实平台应换成 DB + 加盐哈希 + 失败锁定 + 审计，见 docs/11 §5。
     """
     error = ""
     if request.method == "POST":
@@ -128,10 +138,11 @@ def login():
         user = next((u for u in USERS
                      if u["username"] == username and u["password"] == password), None)
         if not user:
-            error = "用户名或口令不正确，请使用下方的演示账号登录"
+            error = "用户名或口令不正确，请使用下方列出的演示账号登录"
         else:
             # 口令不进 session：会话里只留展示需要的字段
             session["wb_user"] = {k: v for k, v in user.items() if k != "password"}
+            db.log(username, "登录", f"{user['name']}（{user['role_name']}）登录工作台")
             nxt = request.form.get("next") or request.args.get("next")
             return redirect(nxt or url_for("workbench.index"))
     return render_template("workbench/login.html", users=USERS, demo=DEMO_MODE, error=error)
@@ -139,31 +150,67 @@ def login():
 
 @workbench_bp.route("/logout")
 def logout():
+    user = current_user()
+    if user:
+        db.log(user["username"], "登出", f"{user['name']} 退出工作台")
     session.pop("wb_user", None)
-    # 不清空提交记录：演示数据是共享的，换个人登录还要接着看
+    # 不清空数据：库里的任务/提交是共享的，换个人登录接着看
     return redirect(url_for("portal.index"))
 
 
+@workbench_bp.route("/switch/<username>")
+def switch(username):
+    """演示便利：一键切换身份（省得退出再登）。仅在 DEMO_MODE 下开放。"""
+    if not DEMO_MODE:
+        return redirect(url_for("workbench.index"))
+    user = next((u for u in USERS if u["username"] == username), None)
+    if user:
+        session["wb_user"] = {k: v for k, v in user.items() if k != "password"}
+        db.log(username, "登录", f"{user['name']} 切换身份进入工作台")
+    return redirect(url_for("workbench.index"))
+
+
 @workbench_bp.route("/reset", methods=["POST"])
+@_login_required
 def reset():
-    """把演示数据恢复到初始状态（演示时反复讲流程用）"""
-    _SUBS[:] = [dict(s) for s in BASE_SUBMISSIONS]
-    return jsonify({"ok": True, "stats": _stats()})
+    """把演示数据恢复到初始局面（演示时反复讲流程用）"""
+    db.reset_db()
+    db.log(current_user()["username"], "重置", "重置演示数据到初始局面")
+    return jsonify({"ok": True, "stats": db.stats()})
 
 
 # --------------------------------------------------------------- 工作台首页
 @workbench_bp.route("/")
 @_login_required
 def index():
+    user = current_user()
     ctx = _common()
+
+    if user["role"] == "annotator":
+        # 标注员只看自己的：手上的活 + 自己的提交记录
+        tasks = [_decorate(t, user) for t in db.list_tasks(assignee=user["username"])]
+        subs = db.list_submissions(user=user["username"], limit=8)
+    else:
+        tasks = [_decorate(t, user) for t in _visible_tasks(user)]
+        subs = db.list_submissions(limit=8)
+
+    ocr_tasks = [t for t in tasks if t["kind"] == "ocr"]
+    proof = db.list_tasks(kind="proofread")
+    proof_rows = proof[0]["payload"] if proof else []
+    ud = db.list_tasks(kind="ud")
+
     ctx.update({
-        "subs": _subs(),
-        "pending_list": [s for s in _subs() if s["status"] == "待审核"],
-        "tasks_total": len(OCR_TASKS),
-        "tasks_todo": sum(1 for t in OCR_TASKS if t["status"] == "待标注"),
-        "rows_total": len(PROOFREAD_ROWS),
-        "rows_bad": sum(1 for r in PROOFREAD_ROWS if r["error"]),
-        "ud_total": len(UD_SENTENCES),
+        "my_tasks": tasks[:9],
+        "subs": subs,
+        "logs": db.list_logs(10) if user["role"] == "admin" else [],
+        "tasks_total": len(ocr_tasks),
+        "tasks_todo": sum(1 for t in ocr_tasks if t["status"] in (db.T_WAIT, db.T_DOING)),
+        "rows_total": len(proof_rows),
+        "rows_bad": sum(1 for r in proof_rows if r.get("error")),
+        "ud_total": sum(len(t["payload"]) for t in ud),
+        "pending_list": db.list_submissions(status=db.S_WAIT),
+        "task_badge": {"待领取": "wait", "标注中": "doing", "待审核": "wait",
+                       "已通过": "ok", "已打回": "bad"},
     })
     return render_template("workbench/index.html", **ctx)
 
@@ -172,61 +219,135 @@ def index():
 @workbench_bp.route("/ocr-annotate")
 @_login_required
 def ocr_annotate():
+    user = current_user()
+    tasks = [_decorate(t, user) for t in _visible_tasks(user) if t["kind"] == "ocr"]
+    cur = request.args.get("task", "")
+    task = next((t for t in tasks if t["id"] == cur), None) or (tasks[0] if tasks else None)
     ctx = _common()
-    ctx.update({"tasks": OCR_TASKS, "task": OCR_TASKS[0]})
+    ctx.update({"tasks": tasks, "task": task or {},
+                "last_sub": db.list_submissions(task_id=task["id"], limit=3) if task else []})
     return render_template("workbench/ocr_annotate.html", **ctx)
 
 
 @workbench_bp.route("/ocr-annotate/submit", methods=["POST"])
 @_login_required
 def ocr_submit():
+    user = current_user()
     payload = request.get_json(force=True) or {}
     task_id = payload.get("task_id", "")
     boxes = payload.get("boxes", [])
-    task = next((t for t in OCR_TASKS if t["id"] == task_id), None)
-    title = f"{task['id']}.png · {len(boxes)} 框" if task else f"{task_id} · {len(boxes)} 框"
-    sub = _add_submission("OCR 标注", title)
-    return jsonify({"ok": True, "submission": sub, "stats": _stats()})
+    if not boxes:
+        return jsonify({"ok": False, "msg": "还没有任何框，不能提交"}), 400
+    task = db.get_task(task_id)
+    title = f"{task['title']} · {len(boxes)} 框" if task else f"{task_id} · {len(boxes)} 框"
+    sid, msg = db.submit_task(task_id, user["username"], boxes, title=title)
+    if not sid:
+        return jsonify({"ok": False, "msg": msg}), 400
+    return jsonify({"ok": True, "msg": msg, "submission_id": sid,
+                    "stats": db.stats(), "task": db.get_task(task_id)})
+
+
+@workbench_bp.route("/task/claim", methods=["POST"])
+@_login_required
+def claim():
+    """领取/继续一个任务（标注员的主要动作）"""
+    user = current_user()
+    tid = (request.get_json(force=True) or {}).get("task_id", "")
+    ok, msg = db.claim_task(tid, user["username"])
+    return jsonify({"ok": ok, "msg": msg, "task": db.get_task(tid),
+                    "stats": db.stats()}), (200 if ok else 400)
+
+
+@workbench_bp.route("/api/submission/<sid>")
+@_login_required
+def api_submission(sid):
+    """提交详情（审核员据此判断，不再只看一个标题）"""
+    s = db.get_submission(sid)
+    if not s:
+        return jsonify({"ok": False, "msg": "提交记录不存在"}), 404
+    t = db.get_task(s["task_id"]) or {}
+    return jsonify({"ok": True, "submission": s, "task": {
+        "id": t.get("id"), "title": t.get("title"), "image": t.get("image"),
+        "size": t.get("size"), "page": t.get("page")}})
+
+
+@workbench_bp.route("/task/assign", methods=["POST"])
+@_login_required
+@_role_required("admin")
+def assign():
+    """管理员指派/改派任务"""
+    payload = request.get_json(force=True) or {}
+    ok, msg = db.assign_task(payload.get("task_id", ""), payload.get("username", ""),
+                             current_user()["username"])
+    return jsonify({"ok": ok, "msg": msg}), (200 if ok else 400)
 
 
 # --------------------------------------------------------------- 0702 双行校对
 @workbench_bp.route("/proofread")
 @_login_required
 def proofread():
+    user = current_user()
+    task = next((t for t in db.list_tasks(kind="proofread")
+                 if t["assignee"] in (None, user["username"])
+                 or user["role"] in ("admin", "reviewer")), None)
+    task = _decorate(task, user) if task else {}
     ctx = _common()
-    ctx.update({
-        "rows": PROOFREAD_ROWS,
-        "bad_rows": [r["idx"] for r in PROOFREAD_ROWS if r["error"]],
-    })
+    rows = task.get("payload", []) if task else []
+    ctx.update({"rows": rows, "task": task,
+                "bad_rows": [r["idx"] for r in rows if r.get("error")],
+                "last_sub": db.list_submissions(task_id=task["id"], limit=3) if task else []})
     return render_template("workbench/proofread.html", **ctx)
 
 
 @workbench_bp.route("/proofread/submit", methods=["POST"])
 @_login_required
 def proofread_submit():
+    user = current_user()
     payload = request.get_json(force=True) or {}
     fixed = payload.get("fixed", [])
-    title = f"all_v8_part03 · {len(PROOFREAD_ROWS)} 句对（修正 {len(fixed)} 处）"
-    sub = _add_submission("双行校对", title)
-    return jsonify({"ok": True, "submission": sub, "stats": _stats()})
+    task = next((t for t in db.list_tasks(kind="proofread")
+                 if t["assignee"] in (None, user["username"])), None)
+    if not task:
+        return jsonify({"ok": False, "msg": "没有指派给你的校对任务"}), 400
+    title = f"{task['title']} · {len(task['payload'])} 句对（修正 {len(fixed)} 处）"
+    sid, msg = db.submit_task(task["id"], user["username"], {"fixed": fixed}, title=title)
+    if not sid:
+        return jsonify({"ok": False, "msg": msg}), 400
+    return jsonify({"ok": True, "msg": msg, "submission_id": sid, "stats": db.stats()})
 
 
 # --------------------------------------------------------------- 0703 依存标注
 @workbench_bp.route("/ud-annotator")
 @_login_required
 def ud_annotator():
+    user = current_user()
+    task = next((t for t in db.list_tasks(kind="ud")
+                 if t["assignee"] in (None, user["username"])
+                 or user["role"] in ("admin", "reviewer")), None)
+    task = _decorate(task, user) if task else {}
     ctx = _common()
-    ctx.update({"sentences": UD_SENTENCES, "sentence": UD_SENTENCES[0]})
+    sentences = task.get("payload", []) if task else []
+    ctx.update({"sentences": sentences, "sentence": sentences[0] if sentences else {},
+                "task": task,
+                "last_sub": db.list_submissions(task_id=task["id"], limit=3) if task else []})
     return render_template("workbench/ud_annotator.html", **ctx)
 
 
 @workbench_bp.route("/ud-annotator/submit", methods=["POST"])
 @_login_required
 def ud_submit():
+    user = current_user()
     payload = request.get_json(force=True) or {}
-    count = len(payload.get("sentences", []))
-    sub = _add_submission("依存标注", f"ud_batch04.conllu · {count} 句")
-    return jsonify({"ok": True, "submission": sub, "stats": _stats()})
+    sents = payload.get("sentences", [])
+    task = next((t for t in db.list_tasks(kind="ud")
+                 if t["assignee"] in (None, user["username"])), None)
+    if not task:
+        return jsonify({"ok": False, "msg": "没有指派给你的依存标注任务"}), 400
+    sid, msg = db.submit_task(task["id"], user["username"], {"sentences": sents},
+                              title=f"{task['title']} · {len(sents)} 句")
+    if not sid:
+        return jsonify({"ok": False, "msg": msg}), 400
+    return jsonify({"ok": True, "msg": msg, "submission_id": sid, "stats": db.stats()})
 
 
 # --------------------------------------------------------------- 审核台（审核员+）
@@ -235,8 +356,8 @@ def ud_submit():
 @_role_required("reviewer")
 def review():
     ctx = _common()
-    ctx.update({"pending": [s for s in _subs() if s["status"] == "待审核"],
-                "reviewed": [s for s in _subs() if s["status"] != "待审核"]})
+    ctx.update({"pending": db.list_submissions(status=db.S_WAIT),
+                "reviewed": db.list_submissions(status=[db.S_PASS, db.S_REJECT], limit=20)})
     return render_template("workbench/review.html", **ctx)
 
 
@@ -245,15 +366,28 @@ def review():
 @_role_required("reviewer")
 def review_decide():
     payload = request.get_json(force=True) or {}
-    sub_id = payload.get("id", "")
-    approve = payload.get("approve", True)
-    comment = payload.get("comment", "")
-    subs = _subs()
-    for s in subs:
-        if s["id"] == sub_id:
-            s["status"] = "已通过" if approve else "已驳回"
-            s["comment"] = comment
-            s["reviewer"] = current_user()["name"]
-            break
-    _save_subs(subs)
-    return jsonify({"ok": True, "stats": _stats()})
+    sid = payload.get("id", "")
+    approve = bool(payload.get("approve", True))
+    comment = (payload.get("comment", "") or "").strip()
+    if not approve and not comment:
+        return jsonify({"ok": False, "msg": "打回必须写清原因，标注员才知道改什么"}), 400
+    ok, msg = db.review_task(sid, current_user()["username"], approve, comment)
+    return jsonify({"ok": ok, "msg": msg, "stats": db.stats()}), (200 if ok else 400)
+
+
+# --------------------------------------------------------------- 管理页（管理员）
+@workbench_bp.route("/admin")
+@_login_required
+@_role_required("admin")
+def admin():
+    ctx = _common()
+    user = current_user()
+    tasks = [_decorate(t, user) for t in db.list_tasks()]
+    ctx.update({
+        "tasks": tasks,
+        "members": db.list_users(),
+        "logs": db.list_logs(40),
+        "annotators": [u for u in USERS if u["role"] in ("annotator", "reviewer")],
+        "unassigned": [t for t in tasks if not t["assignee"]],
+    })
+    return render_template("workbench/admin.html", **ctx)

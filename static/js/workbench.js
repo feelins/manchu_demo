@@ -226,8 +226,24 @@
                                  .map(function (b) { return { text: b.text, conf: b.conf }; });
             if (!payload.length) { toast('还没有任何框'); return; }
             post(window.WB_SUBMIT_URL, { task_id: curId, boxes: payload }, function (d) {
-                toast('已提交：' + d.submission.title + '（' + d.submission.status + '）');
-                setTimeout(function () { location.href = '/workbench/'; }, 1200);
+                toast('已提交：' + d.submission_id + '（' + d.task.status + '）');
+                setTimeout(function () { location.reload(); }, 1200);
+            });
+        });
+
+        // 提交按钮：任务不可编辑（已通过 / 待审核）时禁用，避免重复提交
+        if (window.WB_TASK && !window.WB_TASK.editable) {
+            var sb = $('#btnSubmit');
+            if (sb) { sb.disabled = true; sb.textContent = '✅ ' + (window.WB_TASK.status || '已提交'); }
+        }
+        // 领取按钮：领取后刷新，触发「待领取 → 标注中」状态流转
+        document.querySelectorAll('.wb-claim').forEach(function (btn) {
+            btn.addEventListener('click', function (ev) {
+                ev.stopPropagation();
+                post(window.WB_CLAIM_URL, { task_id: btn.dataset.claim }, function () {
+                    toast('已领取，刷新任务列表…');
+                    setTimeout(function () { location.reload(); }, 800);
+                });
             });
         });
 
@@ -465,6 +481,72 @@
                             if (list) { list.innerHTML = '<div class="wb-empty">已全部处理完。</div>'; }
                         }
                     });
+                });
+            });
+        });
+
+        // ---- 提交详情弹层（审核员据此核对，不再只看标题）----
+        var modal = document.getElementById('detailModal');
+        function esc(s) {
+            return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+            });
+        }
+        function openDetail(id) {
+            modal.hidden = false;
+            document.getElementById('dmBody').innerHTML = '<div class="wb-empty">加载中…</div>';
+            fetch(window.WB_API_SUB.replace('__ID__', id))
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (d.ok) { renderDetail(d); }
+                    else { document.getElementById('dmBody').innerHTML = '<div class="wb-empty">' + esc(d.msg || '加载失败') + '</div>'; }
+                })
+                .catch(function () { document.getElementById('dmBody').innerHTML = '<div class="wb-empty">请求失败</div>'; });
+        }
+        function renderDetail(d) {
+            var s = d.submission, t = d.task || {};
+            document.getElementById('dmTitle').textContent = s.title + (s.attempt > 1 ? '（第 ' + s.attempt + ' 稿）' : '');
+            var html = '<div class="wb-dm-meta">' +
+                '<span class="wb-badge">' + esc(s.kind_name) + '</span>' +
+                '<span>提交人 ' + esc(s.user) + '</span>' +
+                '<span class="mono dim">' + esc(s.created_at) + '</span>' +
+                '<span class="wb-badge ' + (s.status === '已通过' ? 'ok' : (s.status === '已驳回' ? 'bad' : 'wait')) + '">' + esc(s.status) + '</span>' +
+                '</div>';
+            if (s.comment) { html += '<div class="wb-dm-comment">⚠️ 审核意见：' + esc(s.comment) + '</div>'; }
+            if (t.image) { html += '<div class="wb-dm-img"><img src="/static/' + esc(t.image) + '" alt=""></div>'; }
+            var p = s.payload || [];
+            if (Array.isArray(p) && p.length && p[0] && (p[0].text !== undefined || p[0].latin !== undefined)) {
+                html += '<table class="wb-table wb-dm-table"><thead><tr><th>#</th><th>内容</th><th>置信度</th></tr></thead><tbody>';
+                p.forEach(function (b, i) {
+                    var txt = b.text !== undefined ? b.text : (b.latin || '');
+                    var conf = b.conf !== undefined ? (typeof b.conf === 'number' ? b.conf.toFixed(2) : b.conf) : '—';
+                    html += '<tr><td class="mono">' + (i + 1) + '</td><td class="wb-manju">' + esc(txt || '（空）') + '</td><td>' + esc(conf) + '</td></tr>';
+                });
+                html += '</tbody></table>';
+            } else {
+                html += '<div class="wb-dm-raw"><pre>' + esc(JSON.stringify(p, null, 2)) + '</pre></div>';
+            }
+            document.getElementById('dmBody').innerHTML = html;
+        }
+        document.querySelectorAll('.wb-detail-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () { openDetail(btn.dataset.detail); });
+        });
+        document.getElementById('dmClose').addEventListener('click', function () { modal.hidden = true; });
+        document.getElementById('dmMask').addEventListener('click', function () { modal.hidden = true; });
+    }
+
+    /* ============================================================
+       6. 管理后台：任务改派
+       ============================================================ */
+    if (window.WB_ASSIGN_URL) {
+        document.querySelectorAll('button[data-assign]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var tid = btn.dataset.assign;
+                var sel = document.querySelector('select[data-assign-for="' + tid + '"]');
+                var username = sel ? sel.value : '';
+                post(window.WB_ASSIGN_URL, { task_id: tid, username: username }, function () {
+                    toast('已改派，刷新中…');
+                    setTimeout(function () { location.reload(); }, 600);
                 });
             });
         });

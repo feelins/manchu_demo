@@ -219,3 +219,9 @@ __marimo__/
 
 # 运行日志（scripts/services.sh 输出到 logs/）
 logs/
+
+# 工作平台演示数据库（SQLite 落盘，不入库）
+data/
+*.db
+*.db-shm
+*.db-wal
