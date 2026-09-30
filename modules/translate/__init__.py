@@ -39,8 +39,11 @@ from flask import Blueprint, jsonify, render_template, request
 # ---------------------------------------------------------------
 MODEL_REGISTRY = {
     "8001": {
-        "name": "旧模型 (GGUF Q8_0)",
-        "short": "GGUF Q8_0",
+        # 2026-09-30：本机已用 600M 双向模型（nllb-200-distilled-600M 微调，
+        # 权重在 ~/translation_experiments/exp_C_600M_bidirectional/final）起服务，
+        # 不再是 Windows 上的 GGUF Q8_0 —— 名称跟着实物改，避免页面上名不副实。
+        "name": "满汉翻译 600M（双向）",
+        "short": "600M 双向",
         "protocol": "simple",
     },
     "8003": {
@@ -56,7 +59,9 @@ MODEL_REGISTRY = {
     },
 }
 
-DEFAULT_MODEL = os.environ.get("TRANSLATE_DEFAULT_MODEL", "8003")
+# 默认模型必须是当前在线的那个，否则页面一打开就"连不上"：
+# 8003 / 8005 待部署，本机已起的是 8001（600M 双向）
+DEFAULT_MODEL = os.environ.get("TRANSLATE_DEFAULT_MODEL", "8001")
 
 TRANSLATE_TIMEOUT = int(os.environ.get("TRANSLATE_TIMEOUT", 300))
 
