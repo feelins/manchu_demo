@@ -35,14 +35,18 @@
     }
 
     /* ============================================================
-       1. OCR 标注页
+       1. OCR 标注页（整页古籍扫描图 + 竖排满文校对）
+
+       下发任务是整页图，框按竖排列从右向左排列；选中框后右侧显示该框的
+       裁剪预览，文本框用站内专用满文字体竖排显示（见页面内嵌 @font-face）。
+       "AI 画框 / AI 预测"仍是模拟：真实权重在本机但服务未部署。
        ============================================================ */
     if (window.WB_TASKS) {
         var tasks = window.WB_TASKS;
         var curId = window.WB_CURRENT;
         var selected = null;
+        var zoom = 1;
 
-        // 每页独立的运行时状态（不改动 mock 原始数据）
         var state = {};
         tasks.forEach(function (t) {
             state[t.id] = t.boxes.map(function (b) {
@@ -51,10 +55,10 @@
             });
         });
 
-        var layer = $('#boxLayer');
-        var img = $('#pageImg');
+        var layer = $('#boxLayer'), img = $('#pageImg'), wrap = $('#pageWrap');
 
         function boxes() { return state[curId] || []; }
+        function task() { return tasks.filter(function (x) { return x.id === curId; })[0]; }
 
         function renderBoxes() {
             layer.innerHTML = '';
@@ -62,17 +66,13 @@
                 if (!b.shown) return;
                 var d = document.createElement('div');
                 d.className = 'wb-box' + (b.suspect && !b.confirmed ? ' suspect' : '') +
-                              (b.confirmed ? ' confirmed' : '') +
-                              (selected === i ? ' active' : '');
-                d.style.left = b.x + '%';
-                d.style.top = b.y + '%';
-                d.style.width = b.w + '%';
-                d.style.height = b.h + '%';
+                              (b.confirmed ? ' confirmed' : '') + (selected === i ? ' active' : '');
+                d.style.left = b.x + '%'; d.style.top = b.y + '%';
+                d.style.width = b.w + '%'; d.style.height = b.h + '%';
                 var tag = document.createElement('span');
-                tag.className = 'tag';
-                tag.textContent = b.text || '未识别';
+                tag.className = 'tag'; tag.textContent = String(i + 1);
                 d.appendChild(tag);
-                d.addEventListener('click', function () { select(i); });
+                d.addEventListener('click', function (ev) { ev.stopPropagation(); select(i); });
                 layer.appendChild(d);
             });
             var shown = boxes().filter(function (b) { return b.shown; });
@@ -80,6 +80,21 @@
             var done = boxes().filter(function (b) { return b.confirmed; }).length;
             $('#progBar').style.width = (shown.length ? done / shown.length * 100 : 0) + '%';
             $('#progText').textContent = done + ' / ' + shown.length + ' 已确认';
+        }
+
+        // 框预览：按框坐标从原图裁剪（满文竖排，裁出来是窄高的一条）
+        function renderPreview(b) {
+            var pv = $('#previewImage');
+            if (!b || !img.naturalWidth) { pv.hidden = true; $('#previewEmpty').hidden = false; return; }
+            var sx = img.naturalWidth * b.x / 100, sy = img.naturalHeight * b.y / 100;
+            var sw = img.naturalWidth * b.w / 100, sh = img.naturalHeight * b.h / 100;
+            var c = document.createElement('canvas');
+            c.width = Math.max(1, Math.round(sw));
+            c.height = Math.max(1, Math.round(sh));
+            c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
+            pv.src = c.toDataURL('image/png');
+            pv.hidden = false;
+            $('#previewEmpty').hidden = true;
         }
 
         function select(i) {
@@ -91,7 +106,12 @@
             $('#propText').value = b.text || '';
             $('#propConf').textContent = (b.conf || 0).toFixed(2);
             $('#propFlag').textContent = b.confirmed ? '已确认'
-                : (b.suspect ? '置信度偏低，建议人工核对' : '待确认');
+                : (b.suspect ? '置信度偏低，建议核对' : '待确认');
+            $('#propFile').textContent = task().file + ' · 第 ' + (i + 1) + ' 列';
+            $('#previewInfo').textContent = '第 ' + (i + 1) + ' 列 · ' +
+                Math.round(img.naturalWidth * b.w / 100) + '×' +
+                Math.round(img.naturalHeight * b.h / 100) + ' px';
+            renderPreview(b);
             renderBoxes();
         }
 
@@ -100,19 +120,34 @@
             selected = null;
             $('#propEmpty').hidden = false;
             $('#propBody').hidden = true;
-            var t = tasks.filter(function (x) { return x.id === id; })[0];
+            $('#previewImage').hidden = true;
+            $('#previewEmpty').hidden = false;
+            $('#previewInfo').textContent = '—';
+            var t = task();
             img.src = '/static/' + t.image;
+            $('#fileName').textContent = t.file;
+            $('#fileMeta').textContent = t.size + ' · 第 ' + t.page + ' 页';
             document.querySelectorAll('.wb-task').forEach(function (el) {
                 el.classList.toggle('active', el.dataset.task === id);
             });
+            setZoom(1);
             renderBoxes();
         }
+
+        function setZoom(z) {
+            zoom = Math.min(2.5, Math.max(0.45, z));
+            wrap.style.width = (zoom * 100) + '%';
+        }
+
+        img.addEventListener('load', function () {
+            if (selected !== null) { renderPreview(boxes()[selected]); }
+        });
 
         document.querySelectorAll('.wb-task').forEach(function (el) {
             el.addEventListener('click', function () { loadTask(el.dataset.task); });
         });
 
-        // 🔍 AI 画框：模拟版面检测
+        // 🔍 AI 画框：模拟版面检测（竖排列切分）
         $('#btnDetect').addEventListener('click', function () {
             var btn = this;
             btn.disabled = true; btn.textContent = '⏳ 检测中…';
@@ -120,7 +155,7 @@
                 boxes().forEach(function (b) { b.shown = true; });
                 renderBoxes();
                 btn.disabled = false; btn.textContent = '🔍 AI 画框';
-                toast('模拟检测完成：' + boxes().length + ' 个文本块');
+                toast('模拟检测完成：' + boxes().length + ' 个文本列');
             }, 1000);
         });
 
@@ -133,21 +168,23 @@
             setTimeout(function () {
                 boxes().forEach(function (b, i) {
                     if (!b.shown) return;
-                    var src = tasks.filter(function (x) { return x.id === curId; })[0].boxes[i];
-                    b.text = src.text;
-                    b.conf = src.conf;
+                    var src = task().boxes[i];
+                    if (src) { b.text = src.text; b.conf = src.conf; }
                 });
                 renderBoxes();
+                if (selected !== null) { select(selected); }
                 btn.disabled = false; btn.textContent = '🤖 AI 预测';
-                toast('模拟识别完成，请逐框核对');
+                toast('模拟识别完成，请逐列核对');
             }, 1200);
         });
 
-        // ➕ 添加框
+        // ➕ 添加框：接在最左一列（满文从右往左，新列往左加）
         $('#btnAdd').addEventListener('click', function () {
-            var n = boxes().length;
-            boxes().push({ x: 12, y: 8 + n * 12, w: 62, h: 9, text: '', conf: 0,
-                           suspect: false, src: '', confirmed: false, shown: true });
+            var list = boxes();
+            var minX = list.length ? Math.min.apply(null, list.map(function (b) { return b.x; })) : 84;
+            boxes().push({ x: Math.max(4, minX - 5.8), y: 9, w: 5.2, h: 68,
+                           text: '', conf: 0, suspect: false, src: '',
+                           confirmed: false, shown: true });
             renderBoxes();
             select(boxes().length - 1);
         });
@@ -158,8 +195,15 @@
             selected = null;
             $('#propEmpty').hidden = false;
             $('#propBody').hidden = true;
+            $('#previewImage').hidden = true;
+            $('#previewEmpty').hidden = false;
             renderBoxes();
         });
+
+        // 缩放
+        $('#btnZoomIn').addEventListener('click', function () { setZoom(zoom + 0.2); });
+        $('#btnZoomOut').addEventListener('click', function () { setZoom(zoom - 0.2); });
+        $('#btnZoomFit').addEventListener('click', function () { setZoom(1); });
 
         // 编辑文本
         $('#propText').addEventListener('input', function () {
@@ -188,6 +232,7 @@
         });
 
         renderBoxes();
+        loadTask(curId);
         return;
     }
 

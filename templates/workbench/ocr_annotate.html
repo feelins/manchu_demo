@@ -4,6 +4,23 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/workbench.css') }}">
+<style>
+/* ============================================================
+   0701 标注页专用满文字体（内嵌）
+
+   注意：站内有两个同名但内容不同的 001A-Buleku-R.ttf——
+     · static/fonts/001A-Buleku-R.ttf   -> 其他版块用（全局 'Buleku'）
+     · static/fonts/annot/001A-Buleku-R.ttf -> **只有本页用**（'BulekuAnnot'）
+   两者 md5 不同，字形映射也不同，本页必须用后者，且不能覆盖全局字体。
+   ============================================================ */
+@font-face {
+    font-family: 'BulekuAnnot';
+    src: url('{{ url_for("static", filename="fonts/annot/001A-Buleku-R.ttf") }}') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+</style>
 {% endblock %}
 
 {% block content %}
@@ -23,60 +40,81 @@
   <div class="wb-banner compact">
     <span>ℹ️</span>
     <div>
-      演示：图片是真实语料切片，<strong>框与识别结果是 mock</strong>；
-      「AI 画框 / AI 预测」模拟 1 秒返回，不调用真实模型（真实检测服务 7860 在本机不存在）。
+      下发的是<strong>整页古籍扫描图</strong>（原图 2144×3136，来自
+      <code>/data/manju_dataset/images/raw</code>，此处为演示切片）。
+      「AI 画框 / AI 预测」为模拟：真实检测权重
+      <code>exp_0512_2006/weights/best.pt</code> 已在本机，服务尚未部署。
       提交只记进会话，不落盘。
     </div>
   </div>
 
-  <div class="wb-annot">
-    <!-- ==================== 左：任务列表 ==================== -->
+  <div class="wb-annot-v8">
+    <!-- ==================== 左：下发任务列表（保留） ==================== -->
     <aside class="wb-tasklist">
-      <div class="wb-panel-title">任务列表</div>
+      <div class="wb-panel-title">我的任务（{{ tasks|length }}）</div>
       {% for t in tasks %}
       <button class="wb-task {% if t.id == task.id %}active{% endif %}" data-task="{{ t.id }}">
-        <img src="{{ url_for('static', filename=t.image) }}" alt="{{ t.id }}">
+        <img src="{{ url_for('static', filename=t.image) }}" alt="{{ t.file }}">
         <div class="wb-task-meta">
-          <span class="mono">{{ t.id }}.png</span>
+          <span class="mono">{{ t.file }}</span>
+          <span class="wb-task-sub">{{ t.size }} · 第 {{ t.page }} 页 · {{ t.boxes|length }} 框</span>
           <span class="wb-badge {{ 'wait' if t.status == '待标注' else 'ok' }}">{{ t.status }}</span>
         </div>
       </button>
       {% endfor %}
     </aside>
 
-    <!-- ==================== 中：画布 ==================== -->
-    <div class="wb-main">
-      <div class="wb-toolbar">
-        <button class="wb-btn" id="btnDetect">🔍 AI 画框</button>
-        <button class="wb-btn" id="btnPredict">🤖 AI 预测</button>
-        <button class="wb-btn" id="btnAdd">➕ 添加框</button>
-        <button class="wb-btn danger" id="btnClear">🗑️ 清空</button>
+    <!-- ==================== 中：整页画布 ==================== -->
+    <div class="wb-board">
+      <div class="wb-board-head">
+        <span class="wb-file-name" id="fileName">{{ task.file }}</span>
+        <span class="wb-file-meta" id="fileMeta">{{ task.size }} · 第 {{ task.page }} 页</span>
         <span class="wb-spacer"></span>
+        <button class="wb-btn tiny" id="btnZoomOut">－</button>
+        <button class="wb-btn tiny" id="btnZoomFit">适应</button>
+        <button class="wb-btn tiny" id="btnZoomIn">＋</button>
         <span class="wb-count">当前 <b id="boxCount">0</b> 框</span>
-        <button class="wb-btn primary" id="btnSubmit">✅ 提交审核</button>
       </div>
 
-      <div class="wb-canvas" id="canvas">
-        <img id="pageImg" src="{{ url_for('static', filename=task.image) }}" alt="古籍页">
-        <div id="boxLayer"></div>
+      <div class="wb-canvas-v8" id="canvas">
+        <div class="wb-page-wrap" id="pageWrap">
+          <img id="pageImg" src="{{ url_for('static', filename=task.image) }}" alt="古籍整页">
+          <div id="boxLayer"></div>
+        </div>
       </div>
 
       <div class="wb-hint">
-        点击框可选中并修改右侧文本；<span class="suspect-chip">橙色框</span>表示置信度低、建议人工确认。
+        点击框可在右侧校对文本；<span class="suspect-chip">橙色框</span>表示置信度低、建议人工确认。
+        满文为竖排，框按列从右向左排列。
       </div>
     </div>
 
-    <!-- ==================== 右：属性 ==================== -->
-    <aside class="wb-props">
-      <div class="wb-panel-title">框属性</div>
+    <!-- ==================== 右：工具 + 预览 + 校对 ==================== -->
+    <aside class="wb-side-v8">
+      <div class="wb-toolbar-v">
+        <button class="wb-btn" id="btnDetect" title="按竖排列切分">🔍 AI 画框</button>
+        <button class="wb-btn" id="btnPredict" title="识别框内满文">🤖 AI 预测</button>
+        <button class="wb-btn" id="btnAdd">➕ 添加框</button>
+        <button class="wb-btn danger" id="btnClear">🗑️ 清空</button>
+      </div>
+
+      <div class="wb-panel-title">框预览</div>
+      <div class="wb-preview">
+        <img id="previewImage" alt="框预览" hidden>
+        <div class="wb-preview-empty" id="previewEmpty">未选中框</div>
+      </div>
+      <div class="wb-preview-info" id="previewInfo">—</div>
+
+      <div class="wb-panel-title mt">文本校对（传统满文）</div>
       <div id="propEmpty" class="wb-empty-sm">未选中任何框</div>
       <div id="propBody" hidden>
-        <label class="wb-label">识别文本（传统满文）</label>
-        <textarea id="propText" class="wb-input manju" rows="3" dir="ltr"></textarea>
-        <label class="wb-label">置信度</label>
-        <div class="wb-conf"><span id="propConf">0.00</span></div>
-        <label class="wb-label">状态</label>
-        <div id="propFlag" class="wb-flag">正常</div>
+        <div class="wb-anno-file mono" id="propFile">—</div>
+        <textarea id="propText" class="wb-anno-input" rows="1" spellcheck="false"
+                  placeholder="在此校对满文"></textarea>
+        <div class="wb-anno-line">
+          <span>置信度 <b id="propConf">0.00</b></span>
+          <span id="propFlag" class="wb-flag">待确认</span>
+        </div>
         <button class="wb-btn primary block" id="btnConfirm">✔ 确认这框</button>
       </div>
 
@@ -85,6 +123,8 @@
         <div class="wb-progress-bar"><span id="progBar" style="width:0%"></span></div>
         <div class="wb-progress-text"><span id="progText">0 / 0 已确认</span></div>
       </div>
+
+      <button class="wb-btn primary block mt" id="btnSubmit">✅ 提交审核</button>
     </aside>
   </div>
 </section>

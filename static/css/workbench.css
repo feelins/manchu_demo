@@ -634,3 +634,70 @@ tr.prow.fixed { background: #ecfdf5; }
     .wb-stats { grid-template-columns: repeat(2, 1fr); }
     .wb-login { grid-template-columns: 1fr; }
 }
+
+/* ============================================================
+   0701 满文古籍 OCR 标注（整页版，布局参照 v8 标注工具）
+   满文校对框必须用本页内嵌的 'BulekuAnnot' 字体（竖排）
+   ============================================================ */
+.wb-annot-v8 {
+    display: grid;
+    grid-template-columns: 210px minmax(0, 1fr) 330px;
+    gap: 16px;
+    align-items: start;
+}
+
+.wb-task-sub { display: block; font-size: 11px; color: var(--muted, #6b7280); margin: 2px 0 4px; }
+
+.wb-board { border: 1px solid var(--line, #e5e7eb); border-radius: 12px; background: #fff; overflow: hidden; }
+.wb-board-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; border-bottom: 1px solid var(--line, #e5e7eb); background: #fafafa;
+}
+.wb-file-name { font-weight: 600; font-size: 14px; }
+.wb-file-meta { font-size: 12px; color: var(--muted, #6b7280); }
+.wb-btn.tiny { padding: 3px 9px; font-size: 12px; }
+
+.wb-canvas-v8 { background: #efece5; max-height: 68vh; overflow: auto; padding: 14px; }
+.wb-page-wrap { position: relative; width: 100%; margin: 0 auto; box-shadow: 0 2px 10px rgba(0,0,0,.18); }
+.wb-page-wrap img { width: 100%; display: block; }
+
+.wb-box .tag { font-size: 10px; padding: 0 4px; border-radius: 3px; background: var(--gold, #b08d3f); color: #fff; }
+
+.wb-side-v8 { border: 1px solid var(--line, #e5e7eb); border-radius: 12px; background: #fff; padding: 14px; }
+.wb-toolbar-v { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+
+.wb-preview {
+    height: 190px; display: flex; align-items: center; justify-content: center;
+    background: #fafafa; border: 1px dashed var(--line, #e5e7eb); border-radius: 8px;
+    overflow: auto; margin-bottom: 6px;
+}
+.wb-preview img { max-height: 176px; max-width: 100%; }
+.wb-preview-empty { font-size: 12px; color: var(--muted, #6b7280); }
+.wb-preview-info { font-size: 11.5px; color: var(--muted, #6b7280); margin-bottom: 10px; }
+.wb-anno-file { font-size: 11.5px; color: var(--muted, #6b7280); margin-bottom: 6px; }
+
+/* 竖排满文校对框：站内专用字体（只在本页内嵌），字号加大、框加长 */
+.wb-anno-input {
+    width: 100%; height: 300px;
+    font-family: 'BulekuAnnot', 'Buleku', serif;
+    font-size: 30px;
+    writing-mode: vertical-lr;
+    text-orientation: sideways-right;
+    line-height: 1.35;
+    padding: 10px 6px;
+    border: 1px solid var(--line, #e5e7eb);
+    border-radius: 8px;
+    background: #fffdf8;
+    resize: none; outline: none;
+}
+.wb-anno-input:focus { border-color: var(--gold, #b08d3f); box-shadow: 0 0 0 3px rgba(201,162,39,.15); }
+
+.wb-anno-line { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted, #6b7280); margin: 8px 0; }
+
+@media (max-width: 1200px) {
+    .wb-annot-v8 { grid-template-columns: 180px minmax(0, 1fr) 300px; }
+}
+@media (max-width: 1000px) {
+    .wb-annot-v8 { grid-template-columns: 1fr; }
+    .wb-canvas-v8 { max-height: 52vh; }
+}
