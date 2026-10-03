@@ -38,7 +38,12 @@ db.init_db()
 
 # --------------------------------------------------------------- 会话与权限
 def current_user():
-    return session.get("wb_user")
+    """返回当前登录用户；会话结构失效（如升级前的旧 cookie 缺字段）一律当未登录，
+    避免 KeyError 导致整页 500——旧 cookie 用户会被引导回登录页重新登录覆盖之。"""
+    u = session.get("wb_user")
+    if not isinstance(u, dict) or "username" not in u or "role" not in u:
+        return None
+    return u
 
 
 def _login_required(view):
