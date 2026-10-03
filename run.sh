@@ -30,12 +30,29 @@ running_pid() {
   ss -lntp 2>/dev/null | grep -E ":${PORT}[^0-9]" | grep -oE 'pid=[0-9]+' | head -1 | cut -d= -f2
 }
 
+ensure_detect() {
+  # AI 画框检测服务（7860）与本门户解耦、独立常驻；run.sh 仅负责确保它被拉起，
+  # 真正进程由 systemd --user 托管（manchu-detect.service）。启动失败不影响门户其余功能。
+  if command -v systemctl >/dev/null 2>&1 && systemctl --user cat manchu-detect >/dev/null 2>&1; then
+    if systemctl --user is-active --quiet manchu-detect; then
+      echo "检测服务 manchu-detect 已在运行（端口 7860）"
+    elif systemctl --user start manchu-detect >/dev/null 2>&1; then
+      echo "已拉起检测服务 manchu-detect（端口 7860）"
+    else
+      echo "警告：manchu-detect 启动失败，AI 画框功能将不可用（不影响门户其余功能）"
+    fi
+  else
+    echo "提示：未找到 manchu-detect 服务，AI 画框功能将不可用"
+  fi
+}
+
 case "${1:-foreground}" in
   foreground)
     # 前台：由 systemd 或终端托管，进程退出即视为停止
     exec "$GUNICORN" -c gunicorn.conf.py app:app
     ;;
   start)
+    ensure_detect
     pid="$(running_pid)"
     if [ -n "${pid:-}" ]; then
       echo "门户已在运行（pid=${pid}）端口 ${PORT}，无需重复启动"; exit 0
