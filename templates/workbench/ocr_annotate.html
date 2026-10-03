@@ -42,8 +42,10 @@
     <div>
       下发的是<strong>整页古籍扫描图</strong>（原图 2144×3136，来自
       <code>/data/manju_dataset/images/raw</code>，此处为演示切片）。
-      「AI 画框 / AI 预测」为模拟：真实检测权重
-      <code>exp_0512_2006/weights/best.pt</code> 已在本机，服务尚未部署。
+      「<strong>AI 画框</strong>」已接真实模型：后端把图片代理给 Ubuntu 常驻的单词框检测服务
+      （<code>127.0.0.1:7860/detect</code>，YOLOv8n v6，CPU 约 68ms/页），返回原图坐标并换算为显示百分比、
+      按满文竖排做列优先排序。
+      「AI 预测」仍为模拟（识别服务未接入）。
       提交与审核<strong>落 SQLite</strong>，审核员、管理员看的是同一份数据。
     </div>
   </div>
@@ -150,6 +152,7 @@
   window.WB_CURRENT = {{ (task.id if task else '') | tojson }};
   window.WB_SUBMIT_URL = {{ url_for('workbench.ocr_submit') | tojson }};
   window.WB_CLAIM_URL = {{ url_for('workbench.claim') | tojson }};
+  window.WB_AI_DETECT_URL = {{ url_for('workbench.ocr_ai_detect') | tojson }};
   window.WB_TASK = {{ ({
     'id': task.id if task else '',
     'editable': task.editable if task else false,

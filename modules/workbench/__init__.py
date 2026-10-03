@@ -19,13 +19,21 @@
 不是指派给你的任务，前端藏了按钮、后端也会拒（见 db.submit_task）。
 """
 
+import json
+import os
+import urllib.error
+import urllib.request
 from functools import wraps
 
-from flask import (Blueprint, jsonify, redirect, render_template, request,
-                   session, url_for)
+from flask import (Blueprint, current_app, jsonify, redirect, render_template,
+                   request, session, url_for)
 
 from . import db
 from .mock import ROLE_LEVEL, USERS
+
+# AI 画框检测服务地址（Ubuntu 常驻，见 docs/17 与 AI画框模型部署交接说明.md）。
+# 端口 7860 与门户 8000 分离，避免冲突；前端只跟本路由交互，不在浏览器直连模型服务。
+DETECT_URL = "http://127.0.0.1:7860/detect"
 
 # 演示模式开关：页面上据此显示"演示"提示与身份切换入口
 DEMO_MODE = True
@@ -107,6 +115,9 @@ def _decorate(task, user):
                      "已通过": "ok", "已打回": "bad"}.get(task["status"], "")
     task["boxes"] = task["payload"] if task["kind"] == "ocr" else []
     task["editable"] = _editable(task, user)
+    # 种子时把原图文件名存进了 title（tasks 表无独立 file 列），这里补回 file 字段，
+    # 供模板/JS 显示「文件名」（v8 工具的「加文件名」对应需求）
+    task["file"] = task.get("title")
     task["url"] = {
         "ocr": url_for("workbench.ocr_annotate", task=task["id"]),
         "proofread": url_for("workbench.proofread"),
@@ -250,6 +261,92 @@ def ocr_submit():
         return jsonify({"ok": False, "msg": msg}), 400
     return jsonify({"ok": True, "msg": msg, "submission_id": sid,
                     "stats": db.stats(), "task": db.get_task(task_id)})
+
+
+# --------------------------------------------------------------- 0701 AI 画框（真实模型代理）
+# 把标注页「AI 画框」接到 Ubuntu 单词框检测服务（:7860）。后端代理而非前端直连，
+# 规避 CORS / 校园网白名单，且模型服务与门户同机时走 127.0.0.1 即可。
+@workbench_bp.route("/ocr-annotate/ai-detect", methods=["POST"])
+@_login_required
+def ocr_ai_detect():
+    user = current_user()
+    payload = request.get_json(force=True) or {}
+    task_id = payload.get("task_id", "")
+    task = db.get_task(task_id)
+    if not task or task["kind"] != "ocr":
+        return jsonify({"ok": False, "msg": "任务不存在或不是 OCR 标注任务"}), 400
+
+    img_rel = task.get("image", "")
+    img_path = os.path.join(current_app.static_folder, img_rel) if img_rel else ""
+    if not img_path or not os.path.exists(img_path):
+        return jsonify({"ok": False, "msg": "任务图片缺失：" + (img_rel or "(空)")}), 400
+
+    try:
+        with open(img_path, "rb") as f:
+            raw = f.read()
+    except OSError as e:
+        return jsonify({"ok": False, "msg": "读取图片失败：" + str(e)}), 500
+
+    # 转发给检测服务（multipart/form-data，字段名 file，与 v8 契约一致）
+    boundary = b"----manchu_wb_boundary"
+    body = (b"--" + boundary + b"\r\n"
+            b'Content-Disposition: form-data; name="file"; filename="page.png"\r\n'
+            b"Content-Type: image/png\r\n\r\n" + raw + b"\r\n"
+            b"--" + boundary + b"--\r\n")
+    req = urllib.request.Request(
+        DETECT_URL, data=body,
+        headers={"Content-Type": "multipart/form-data; boundary=" + boundary.decode()})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            det = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        return jsonify({"ok": False,
+                        "msg": "检测服务返回错误（可能模型未加载）：HTTP %d" % e.code}), 502
+    except Exception as e:
+        return jsonify({"ok": False,
+                        "msg": "无法连接检测服务 127.0.0.1:7860，请确认 manchu-detect 已启动：" + str(e)}), 502
+
+    iw = det.get("image_width") or 1
+    ih = det.get("image_height") or 1
+    boxes = det.get("boxes") or []
+    if not boxes:
+        return jsonify({"ok": False,
+                        "msg": "AI 未检测到任何文本框（可能原图无文字或阈值过高）"}), 200
+
+    # 原图像素坐标 -> 显示百分比（显示图等比缩放，但百分比与尺寸无关）
+    pct = [{
+        "x": round(b["x"] / iw * 100, 3),
+        "y": round(b["y"] / ih * 100, 3),
+        "w": round(b["w"] / iw * 100, 3),
+        "h": round(b["h"] / ih * 100, 3),
+        "conf": round(float(b.get("confidence", 0)), 3),
+    } for b in boxes]
+
+    # 列优先排序（借鉴 v8：按中心 x 聚类成列，列内按 y 自上而下）——满文竖排右起
+    pct.sort(key=lambda b: b["x"] + b["w"] / 2)
+    widths = sorted(b["w"] for b in pct)
+    median_w = widths[len(widths) // 2] if widths else 5
+    col_th = min(max(2, median_w * 0.55), median_w * 1.2)
+    cols, cur = [], [pct[0]]
+    for b in pct[1:]:
+        prev_c = cur[-1]["x"] + cur[-1]["w"] / 2
+        c = b["x"] + b["w"] / 2
+        if abs(c - prev_c) > col_th:
+            cols.append(cur)
+            cur = [b]
+        else:
+            cur.append(b)
+    cols.append(cur)
+    for col in cols:
+        col.sort(key=lambda b: b["y"])
+    ordered = [b for col in cols for b in col]
+    for b in ordered:
+        b["suspect"] = b["conf"] < 0.7
+
+    db.log(user["username"], "AI画框",
+           f"对 {task.get('title', task['id'])} 检测得 {len(ordered)} 个文本框")
+    return jsonify({"ok": True, "boxes": ordered, "count": len(ordered),
+                    "inference_time_ms": det.get("inference_time_ms")})
 
 
 @workbench_bp.route("/task/claim", methods=["POST"])

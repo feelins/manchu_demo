@@ -147,16 +147,30 @@
             el.addEventListener('click', function () { loadTask(el.dataset.task); });
         });
 
-        // 🔍 AI 画框：模拟版面检测（竖排列切分）
+        // 🔍 AI 画框：真实调用 Ubuntu 检测服务（经后端 /workbench/ocr-annotate/ai-detect 代理）
         $('#btnDetect').addEventListener('click', function () {
             var btn = this;
+            if (!window.WB_TASK || !window.WB_TASK.id) { toast('请先选择一个任务'); return; }
             btn.disabled = true; btn.textContent = '⏳ 检测中…';
-            setTimeout(function () {
-                boxes().forEach(function (b) { b.shown = true; });
+            fetch(window.WB_AI_DETECT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ task_id: window.WB_TASK.id })
+            })
+            .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+            .then(function (res) {
+                var d = res.d;
+                if (!d.ok) { toast('AI 画框失败：' + (d.msg || '未知错误')); return; }
+                state[curId] = d.boxes.map(function (b) {
+                    return { x: b.x, y: b.y, w: b.w, h: b.h, text: '', conf: b.conf,
+                             suspect: !!b.suspect, src: '', confirmed: false, shown: true };
+                });
                 renderBoxes();
-                btn.disabled = false; btn.textContent = '🔍 AI 画框';
-                toast('模拟检测完成：' + boxes().length + ' 个文本列');
-            }, 1000);
+                if (state[curId].length) { select(0); }
+                toast('AI 检测完成：' + state[curId].length + ' 个文本列');
+            })
+            .catch(function (e) { toast('AI 画框请求失败：' + e); })
+            .finally(function () { btn.disabled = false; btn.textContent = '🔍 AI 画框'; });
         });
 
         // 🤖 AI 预测：填充识别文本与置信度
