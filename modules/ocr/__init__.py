@@ -21,6 +21,11 @@ from flask import Blueprint, jsonify, render_template, request
 # 真实 OCR 推理服务（加载 paddle + mmdet 模型，与门户进程分离）
 OCR_UPSTREAM = os.environ.get("OCR_UPSTREAM", "http://127.0.0.1:8080").rstrip("/")
 
+# 文本框检测服务（AI 画框）。独立常驻，默认端口 7860（见 run.sh 的 manchu-detect），
+# 提供 /detect 接口返回 { boxes:[{x,y,w,h}], box_count }。
+# 若部署地址不同，可用 OCR_DETECT_URL 覆盖。
+OCR_DETECT_URL = os.environ.get("OCR_DETECT_URL", "http://127.0.0.1:7860").rstrip("/")
+
 # 版面分析 + 识别的单次请求上限；CPU 推理实测约 3~10s，留足余量
 OCR_TIMEOUT = int(os.environ.get("OCR_TIMEOUT", 300))
 
@@ -69,8 +74,9 @@ def index():
 def recognize():
     """转发图片到 OCR 服务并原样返回结果。
 
-    请求体为 multipart/form-data（image / model_type / recognize_chinese），
+    请求体为 multipart/form-data（image / model_type / recognize_chinese / skip_layout），
     这里不做解析，直接透传原始字节与 Content-Type，避免二次编码导致图片损坏。
+    skip_layout=1 表示单框模式，跳过版面分析，由标注前端逐框裁剪后直送 OCR。
     """
     upstream_url = f"{OCR_UPSTREAM}/api/recognize"
 
@@ -113,6 +119,46 @@ def recognize():
         return jsonify({"error": "OCR 请求失败", "detail": str(e)}), 500
 
 
+@ocr_api_bp.route("/detect", methods=["POST"])
+def detect():
+    """转发图片到文本框检测服务，返回文本框坐标。
+
+    请求体为 multipart/form-data（image），上游返回
+    { boxes:[{x,y,w,h}], box_count, inference_time_ms }。
+    直接透传原始字节，避免二次编码损坏图片。
+    """
+    raw_body = request.get_data()
+    headers = {
+        "Content-Type": request.headers.get("Content-Type", ""),
+        "Accept": "application/json",
+    }
+    try:
+        req = urllib.request.Request(
+            OCR_DETECT_URL,
+            data=raw_body,
+            headers=headers,
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=OCR_TIMEOUT) as resp:
+            body = resp.read()
+            content_type = resp.headers.get("Content-Type", "application/json")
+            return body, resp.status, {"Content-Type": content_type}
+    except urllib.error.HTTPError as e:
+        body = e.read()
+        try:
+            return jsonify({"error": f"检测服务返回 {e.code}", "detail": body.decode("utf-8")}), e.code
+        except UnicodeDecodeError:
+            return jsonify({"error": f"检测服务返回 {e.code}"}), e.code
+    except urllib.error.URLError as e:
+        return jsonify({
+            "error": f"无法连接检测服务（{OCR_DETECT_URL}）",
+            "detail": str(e.reason),
+            "hint": "请确认检测服务已在运行（默认 http://127.0.0.1:7860，可用 OCR_DETECT_URL 覆盖）",
+        }), 502
+    except Exception as e:  # pragma: no cover - 兜底
+        return jsonify({"error": "检测请求失败", "detail": str(e)}), 500
+
+
 @ocr_api_bp.route("/health")
 def health():
     """检查上游 OCR 服务是否在线，用于页面/运维探测。"""
@@ -129,5 +175,6 @@ def health():
     return jsonify({
         "portal": "ok",
         "upstream": OCR_UPSTREAM,
+        "detect_url": OCR_DETECT_URL,
         "upstream_alive": alive,
     }), 200 if alive else 503
