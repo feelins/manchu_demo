@@ -123,7 +123,7 @@
 - **模型目录间歇挂载**：本机 `/home/leyesi/manchu_detect` 位于网络/自动挂载盘，本会话中曾短暂不可见
   （`ls`/`python` 能访问、随即又 `No such file`）。确保该目录挂载后 `manchu-detect` 才能启动。
   若需更稳，可把模型/脚本/venv 迁到本地稳定目录，并改 unit 的 `WorkingDirectory`/`ExecStart`。
-- **AI 预测（识别框内满文）现已接真实识别服务**（见 §8）：端口由参考 HTML 的 1000 改为 **8080**（与门户 OCR 模块 `OCR_UPSTREAM` 默认一致），由 systemd `manchu-ocr.service` 常驻；必须用 **paddle 3.3.0** 环境（2.6.1 会原生段错误）。工作台 `btnPredict` 已改为逐框裁剪竖排字块 → `/api/ocr/recognize`（`skip_layout=1`）→ 回填 `columns[0].text`。
+- **AI 预测（识别框内满文）现已接真实识别服务**（见 §8）：端口由参考 HTML 的 1000 改为 **8080**（与门户 OCR 模块 `OCR_UPSTREAM` 默认一致），由 systemd `manchu-ocr.service` 常驻；运行环境为 **`manju_layout` 且必须 `CUDA_VISIBLE_DEVICES=-1` 强制 CPU**（paddle 环境缺 mmcv 会让版面分析失效，详见 §8.2）。工作台 `btnPredict` 已改为逐框裁剪竖排字块 → `/api/ocr/recognize`（`skip_layout=1`）→ 回填 `columns[0].text`。
 - 提交号仍为演示编号（`S-YYMMDD-NNN`）。
 
 ---
@@ -158,11 +158,15 @@ systemctl --user restart manchu-portal
 - 门户 `/api/ocr/recognize` 原样透传 multipart（含 `model_type`/`skip_layout`），Manchu 列不被 `_prune_chinese_columns` 裁剪。
 
 ### 8.2 识别服务常驻（manchu-ocr.service）
-- 识别服务是门户外的独立进程（`/home/leyesi/ocr_deploy/server.py`，paddle + mmdet）。
-  **必须用 paddle 3.3.0 环境**：在 paddle 2.6.1 下 `create_predictor` 会原生段错误（模型由 3.3.0 导出）。
+- 识别服务是门户外的独立进程（`/home/leyesi/ocr_deploy/server.py`，paddle 识别 + mmdet 版面分析）。
+  **唯一含完整依赖的环境是 `manju_layout`**（paddle 3.3.1 + mmdet 3.0.0 + mmcv 2.0.1 + flask 3.1.3 + torch 2.0.1+cu118）；
+  纯 `paddle` 环境缺 mmcv → 版面分析加载失败 → 整页识别降级为「单框直送」（即 2026-11-01 暴露的「无法识别」根因）。
+- **必须强制 CPU**：本机 GPU 当前可用，但 paddle 与 torch 共存时走 CUDA 会触发 glibc 堆损坏崩溃
+  （`corrupted double-linked list`）。故 unit 注入 `CUDA_VISIBLE_DEVICES=-1`，整服务走 CPU 推理
+  （版面分析 + 满文/汉字识别均 CPU，2026-09-24 已验证稳定，~3.4s/张，`layout_used=True`）。
 - 新增 systemd 用户单元 `~/.config/systemd/user/manchu-ocr.service`：`WorkingDirectory=%h/ocr_deploy`，
-  `ExecStart=/home/leyesi/miniconda3/envs/paddle/bin/python server.py --port 8080 --host 127.0.0.1`，
-  并注入 `OMP_NUM_THREADS=1`（规避 Paddle 多线程段错误）、`Restart=always`、`TimeoutStartSec=180`。
+  `ExecStart=/home/leyesi/miniconda3/envs/manju_layout/bin/python server.py --port 8080 --host 127.0.0.1`，
+  并注入 `CUDA_VISIBLE_DEVICES=-1` / `OMP_NUM_THREADS=1`（规避 Paddle 多线程段错误）/`KMP_DUPLICATE_LIB_OK=TRUE`、`Restart=always`、`TimeoutStartSec=240`。
 - 已 `enable --now`，与 `manchu-portal / manchu-detect / manchu-translate-8001` 一并常驻；
   验证：`/api/ocr/health` 返回 `upstream_alive:true`，门户代理实测返回满文（如 `ᠠᠪᡴᠠ ᠠᠪᡴᠠ ᡨᡳᠶᠠᠨ ᡠᠮᡝᠱᡳ ᡩᡝᠨ`）。
 - 注意：`manchu-ocr.service` 位于 `~/.config/` **不在本 git 仓库内**，提交代码不会包含它；若需版本化，请复制到仓库（如 `deploy/`）。

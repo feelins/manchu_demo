@@ -8,7 +8,7 @@
 
 ## 0. 一句话结论
 
-- **① 古籍 OCR 无法识别**：根因是 OCR 识别服务（8080）启动在 `paddle` 环境，**缺 `mmcv`**，导致版面分析模块加载失败、整页识别降级为"单框直送"，识别不出满文。正确的运行环境是 `manju_layout`（同时含 paddle 3.3.1 + torch/mmdet/mmcv + flask），但**该环境当前启动即崩**（glibc `corrupted double-linked list`），需先解决崩溃。
+- **① 古籍 OCR 无法识别（已修复）**：根因是 8080 此前跑在 `paddle` 环境**缺 `mmcv`** → 版面分析失败、整页降级"单框直送"。正确环境 `manchu_layout` 却因**本机 GPU 可用时 paddle/torch 共存走 CUDA 触发 glibc 堆损坏崩溃**。修复：在 `manchu_layout` 下 `CUDA_VISIBLE_DEVICES=-1` **强制 CPU**，版面分析正常、整页 `layout_used=True`、多列满文。详见 §1.5。
 - **② 每页画框都一样**：检测服务（7860）经实测**正常且按图返回不同结果**，不是模型没启动。"每页一样"是因为**种子 OCR 任务大概率是同一张图**——属数据/种子问题，非代码缺陷。
 - **③ 框删不掉**：`workbench.js` 里**根本没有"删除框"的逻辑**（只有 toast/行/chip 的 `.remove()`），属功能缺失，需新增。
 
@@ -47,7 +47,7 @@ FatalError: `Termination signal` is detected by the operating system.
 
 → PID 退出，8080 端口不监听，服务 DOWN。此为**堆损坏类崩溃**，需在实施阶段定位（见 §1.5）。
 
-### 1.5 修改方案（待实施）
+### 1.5 修改方案（① 已于 2026-11-01 实施）
 1. **解决 manju_layout 启动崩溃**（关键前置）：
    - 怀疑是 paddle 3.3.1 的 oneDNN/mkldnn 融合在本机 CPU 上堆损坏。先尝试在 unit 注入：`Environment=FLAGS_use_mkldnn=0`（或 `DNNL_MAX_CPU_ISA=AVX2`），保留 `OMP_NUM_THREADS=1` / `KMP_DUPLICATE_LIB_OK=TRUE`。
    - 若仍崩，排查是否 torch/mmdet 加载时与 paddle 争用 OpenMP/MKL 运行库；检查 `ldd` 是否有多份 libgomp/libiomp 冲突。
@@ -106,10 +106,10 @@ FatalError: `Termination signal` is detected by the operating system.
 
 ## 5. 实施 Checklist（确认后执行）
 
-- [ ] 1.5.1 解决 manju_layout 启动崩溃（尝试 `FLAGS_use_mkldnn=0` 等）
-- [ ] 1.5.2 将 `manchu-ocr.service` 切到 `manju_layout` 并重启
-- [ ] 1.5.3 验证整页识别返回多列满文
-- [ ] 1.5.4 更新 doc 17 §8.2 的环境说明
+- [x] 1.5.1 已定位崩溃根因：本机 GPU 可用时 paddle/torch 共存走 CUDA 触发 glibc 堆损坏；无需 `FLAGS_use_mkldnn=0`，直接隐藏 GPU 即可
+- [x] 1.5.2 已将 `manchu-ocr.service` 切到 `manchu_layout` + `CUDA_VISIBLE_DEVICES=-1` 并重启
+- [x] 1.5.3 已验证整页识别 `layout_used=True`、多列满文（`asj212a.jpg` 实测 5 列）
+- [x] 1.5.4 已更新 doc 17 §8.2 的环境说明（见上）
 - [ ] 2.3.1 核对并修正 OCR 种子任务图片（去重/换图）
 - [ ] 3.2.1~3.2.5 在 workbench.js 新增删除框（按钮 + Delete 快捷键）
 - [ ] 全部完成后浏览器硬刷新（Ctrl+Shift+R）复测三处
