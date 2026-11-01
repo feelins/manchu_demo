@@ -298,12 +298,15 @@
         // 🔍 AI 画框：真实调用 Ubuntu 检测服务（经后端 /workbench/ocr-annotate/ai-detect 代理）
         $('#btnDetect').addEventListener('click', function () {
             var btn = this;
-            if (!window.WB_TASK || !window.WB_TASK.id) { toast('请先选择一个任务'); return; }
+            // 必须用 curId（当前打开的任务，点左侧任务列表时由 loadTask 更新）；
+            // 不能用 window.WB_TASK.id（页面初次渲染时注入的全局量，切换任务后不会变）——
+            // 否则无论切到第几页都会拿「第一个任务」的检测结果，表现为"每页画出来的框都一样"。
+            if (!curId) { toast('请先选择一个任务'); return; }
             btn.disabled = true; btn.textContent = '⏳ 检测中…';
             fetch(window.WB_AI_DETECT_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ task_id: window.WB_TASK.id })
+                body: JSON.stringify({ task_id: curId })
             })
             .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
             .then(function (res) {
