@@ -119,6 +119,15 @@ CREATE INDEX IF NOT EXISTS idx_task_assign ON tasks(assignee);
 
 
 # --------------------------------------------------------------- 初始化与种子
+def _ocr_seed_boxes(i):
+    """演示用占位框：列数与起点随任务序号变化，避免 6 张任务初始框完全雷同
+    （真实标注以「AI 画框」检测结果为准，见 modules/workbench/__init__.py 的 ai-detect）。"""
+    n = 3 + (i % 4)                 # 3~6 列
+    x0 = 84.0 - (i - 1) * 1.4       # 起点随任务偏移
+    return [{"x": round(x0 - k * 5.8, 1), "y": 9.0, "w": 5.2, "h": 68.0,
+             "text": "", "conf": 0.9} for k in range(n)]
+
+
 def _seed_tasks():
     """演示初始局面——刻意让三种角色一登录就都有事可做：
 
@@ -147,7 +156,7 @@ def _seed_tasks():
             "image": t["image"],
             "size": t.get("size", ""),
             "page": t.get("page"),
-            "payload": json.dumps(t["boxes"], ensure_ascii=False),
+            "payload": json.dumps(_ocr_seed_boxes(i), ensure_ascii=False),
             "assignee": assignee,
             "status": status,
             "comment": comment,

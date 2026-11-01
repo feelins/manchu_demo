@@ -393,6 +393,34 @@
             selectBox(boxes()[boxes().length - 1]);
         });
 
+        // 🗑 删除选中框：删除后自动重排编号（与列优先顺序一致）
+        function deleteSelected() {
+            if (!selected) { toast('请先选中一个框再删除'); return; }
+            var arr = state[curId];
+            var idx = arr.indexOf(selected);
+            if (idx < 0) return;
+            arr.splice(idx, 1);
+            selected = null;
+            renderBoxes();
+            $('#propBody').hidden = true;
+            $('#propEmpty').hidden = false;
+            renderPreview(null);
+            toast('已删除 1 个文本列');
+        }
+        $('#btnDelete').addEventListener('click', deleteSelected);
+        $('#btnDeleteProp').addEventListener('click', deleteSelected);
+
+        // 快捷键：Delete / Backspace 删除选中框（在输入框内不触发，避免误删文字）
+        document.addEventListener('keydown', function (e) {
+            if (!selected) return;
+            var t = e.target;
+            if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                e.preventDefault();
+                deleteSelected();
+            }
+        });
+
         // 🗑️ 清空
         $('#btnClear').addEventListener('click', function () {
             state[curId] = [];
