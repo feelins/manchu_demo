@@ -15,6 +15,8 @@
 后端代理、坐标换算、列优先排序全部打通；同时确认了本页字体就是用户指定的
 `问题反馈2\001A-Buleku-R.ttf`（与现内嵌字体字节一致），并**修掉了文件名一直不显示的真 bug**。
 
+（后续 2026-11-01 追加：**「AI 预测」也已接真实识别服务**、识别服务已 systemd 常驻、超长宽比框改为醒目红色提示——详见文末 §8。）
+
 ---
 
 ## 1. 用户三项要求
@@ -121,7 +123,7 @@
 - **模型目录间歇挂载**：本机 `/home/leyesi/manchu_detect` 位于网络/自动挂载盘，本会话中曾短暂不可见
   （`ls`/`python` 能访问、随即又 `No such file`）。确保该目录挂载后 `manchu-detect` 才能启动。
   若需更稳，可把模型/脚本/venv 迁到本地稳定目录，并改 unit 的 `WorkingDirectory`/`ExecStart`。
-- **AI 预测（识别框内满文）仍为 mock**：识别服务（端口 1000）未接入；如需真实，按本模式加后端代理即可。
+- **AI 预测（识别框内满文）现已接真实识别服务**（见 §8）：端口由参考 HTML 的 1000 改为 **8080**（与门户 OCR 模块 `OCR_UPSTREAM` 默认一致），由 systemd `manchu-ocr.service` 常驻；必须用 **paddle 3.3.0** 环境（2.6.1 会原生段错误）。工作台 `btnPredict` 已改为逐框裁剪竖排字块 → `/api/ocr/recognize`（`skip_layout=1`）→ 回填 `columns[0].text`。
 - 提交号仍为演示编号（`S-YYMMDD-NNN`）。
 
 ---
@@ -141,3 +143,36 @@ systemctl --user restart manchu-portal
 # 3) 浏览器：登录 zhang → 工作台 → 满文古籍 OCR 标注
 #    → 选任务 → 点「🔍 AI 画框」→ 真实检测返回竖排列框 → 逐框校对满文 → 提交
 ```
+
+---
+
+## 8. 追加记录（2026-11-01）
+
+> 本文档落定后补的两件事：AI 预测接真实识别、识别服务常驻化、超长宽比框视觉强化。
+
+### 8.1 AI 预测接入真实识别（原 §6「仍为 mock」已解决）
+- 参考 HTML（`manju_annotation_tool_v8…AI预测…html`）的 `aiPredict` 走 `http://127.0.0.1:1000/api/recognize`。
+  门户 OCR 模块 `OCR_UPSTREAM` 默认 `http://127.0.0.1:8080`，故识别服务最终落在 **8080**（与门户默认一致，无需改环境变量）。
+- 工作台 `static/js/workbench.js` 的 `btnPredict` 由 `setTimeout` 抄预设文本（mock）改为：
+  逐框裁剪竖排字块（不旋转）→ `POST /api/ocr/recognize`（`model_type=ancient` + `skip_layout=1`）→ 取 `columns[0].text` 回填右侧文本框；逐列串行识别并统计成功/失败。
+- 门户 `/api/ocr/recognize` 原样透传 multipart（含 `model_type`/`skip_layout`），Manchu 列不被 `_prune_chinese_columns` 裁剪。
+
+### 8.2 识别服务常驻（manchu-ocr.service）
+- 识别服务是门户外的独立进程（`/home/leyesi/ocr_deploy/server.py`，paddle + mmdet）。
+  **必须用 paddle 3.3.0 环境**：在 paddle 2.6.1 下 `create_predictor` 会原生段错误（模型由 3.3.0 导出）。
+- 新增 systemd 用户单元 `~/.config/systemd/user/manchu-ocr.service`：`WorkingDirectory=%h/ocr_deploy`，
+  `ExecStart=/home/leyesi/miniconda3/envs/paddle/bin/python server.py --port 8080 --host 127.0.0.1`，
+  并注入 `OMP_NUM_THREADS=1`（规避 Paddle 多线程段错误）、`Restart=always`、`TimeoutStartSec=180`。
+- 已 `enable --now`，与 `manchu-portal / manchu-detect / manchu-translate-8001` 一并常驻；
+  验证：`/api/ocr/health` 返回 `upstream_alive:true`，门户代理实测返回满文（如 `ᠠᠪᡴᠠ ᠠᠪᡴᠠ ᡨᡳᠶᠠᠨ ᡠᠮᡝᠱᡳ ᡩᡝᠨ`）。
+- 注意：`manchu-ocr.service` 位于 `~/.config/` **不在本 git 仓库内**，提交代码不会包含它；若需版本化，请复制到仓库（如 `deploy/`）。
+
+### 8.3 超长宽比框视觉强化（④）
+- 判定规则不变：竖排列框缩放至高 48 后宽 > 320px（即 `ratio = natH/natW > 320/48 ≈ 6.67`）即标红。
+- `static/css/workbench.css` 的 `.wb-box.ratio-bad` 由低对比蓝色细边改为**醒目红色 3px 粗边 + 红色辉光 + 白字红底角标**，角标文本显示实际导出宽度（如 `⚠ 超长 384px`）。
+- 缩放时（`onResize`）实时刷新颜色；普通（合规）框为金色细边，对比明显。
+
+### 8.4 验证
+- 四服务均 `systemctl --user is-active` = `active`（8000 / 7860 / 8080 / 8001）。
+- 工作台：AI 画框 → AI 预测 逐列回填满文；拖动框四角越过阈值时金色↔红色实时翻转。
+- 浏览器需硬刷新（Ctrl+Shift+R）以加载新 `workbench.js` / `workbench.css`。

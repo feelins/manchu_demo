@@ -44,14 +44,19 @@
     if (window.WB_TASKS) {
         var tasks = window.WB_TASKS;
         var curId = window.WB_CURRENT;
-        var selected = null;
+        var selected = null;          // 当前选中框（对象引用；重排后仍可定位）
         var zoom = 1;
+        var isDragging = false, isResizing = false, resizeHandle = null, dragged = false;
+        var dragStart = { x: 0, y: 0 }, boxStart = { x: 0, y: 0, w: 0, h: 0 };
+
+        // 48×≤320 标准：旋转后高 48、宽 ≤ 320（ratio = h/w > 320/48 即不合格）
+        var TARGET_H = 48, MAX_W = 320, MAX_RATIO = MAX_W / TARGET_H;
 
         var state = {};
         tasks.forEach(function (t) {
             state[t.id] = t.boxes.map(function (b) {
                 return { x: b.x, y: b.y, w: b.w, h: b.h, text: '', conf: 0, suspect: !!b.suspect,
-                         src: b.text, confirmed: false, shown: false };
+                         src: b.text, confirmed: false, shown: false, _el: null };
             });
         });
 
@@ -60,19 +65,52 @@
         function boxes() { return state[curId] || []; }
         function task() { return tasks.filter(function (x) { return x.id === curId; })[0]; }
 
+        // 显示像素 → 百分比（随缩放变化，用图片实时渲染尺寸换算）
+        function pxToPct(dxPx, dyPx) {
+            var r = img.getBoundingClientRect();
+            return { dx: r.width ? dxPx / r.width * 100 : 0, dy: r.height ? dyPx / r.height * 100 : 0 };
+        }
+
+        // 长宽比判定：竖排列框 w 窄 h 高；旋转 90° 后宽=natH、高=natW，
+        // 缩放至高 48 时 宽 = natH*48/natW = ratio*48；ratio>320/48 → 超出标准 → 蓝色高亮
+        function ratioInfo(b) {
+            if (!img.naturalWidth) return { bad: false, exportW: 0, ratio: 0 };
+            var natW = img.naturalWidth * b.w / 100;
+            var natH = img.naturalHeight * b.h / 100;
+            if (natW <= 0 || natH <= 0) return { bad: false, exportW: 0, ratio: 0 };
+            var ratio = natH / natW;
+            return { bad: ratio > MAX_RATIO, ratio: ratio, exportW: Math.round(ratio * TARGET_H) };
+        }
+
         function renderBoxes() {
             layer.innerHTML = '';
             boxes().forEach(function (b, i) {
                 if (!b.shown) return;
+                var ri = ratioInfo(b);
                 var d = document.createElement('div');
                 d.className = 'wb-box' + (b.suspect && !b.confirmed ? ' suspect' : '') +
-                              (b.confirmed ? ' confirmed' : '') + (selected === i ? ' active' : '');
+                              (b.confirmed ? ' confirmed' : '') +
+                              (selected === b ? ' active' : '') +
+                              (ri.bad ? ' ratio-bad' : '');
                 d.style.left = b.x + '%'; d.style.top = b.y + '%';
                 d.style.width = b.w + '%'; d.style.height = b.h + '%';
                 var tag = document.createElement('span');
                 tag.className = 'tag'; tag.textContent = String(i + 1);
                 d.appendChild(tag);
-                d.addEventListener('click', function (ev) { ev.stopPropagation(); select(i); });
+                if (ri.bad) {
+                    var warn = document.createElement('span');
+                    warn.className = 'ratio-warn'; warn.textContent = '⚠ 超长';
+                    d.appendChild(warn);
+                }
+                // 四角缩放手柄
+                ['tl', 'tr', 'bl', 'br'].forEach(function (pos) {
+                    var h = document.createElement('span');
+                    h.className = 'rz rz-' + pos;
+                    h.addEventListener('mousedown', function (e) { startResize(e, b, pos); });
+                    d.appendChild(h);
+                });
+                d.addEventListener('mousedown', function (e) { startDrag(e, b); });
+                b._el = d;
                 layer.appendChild(d);
             });
             var shown = boxes().filter(function (b) { return b.shown; });
@@ -80,6 +118,109 @@
             var done = boxes().filter(function (b) { return b.confirmed; }).length;
             $('#progBar').style.width = (shown.length ? done / shown.length * 100 : 0) + '%';
             $('#progText').textContent = done + ' / ' + shown.length + ' 已确认';
+        }
+
+        // 仅移动/缩放当前框的 DOM，拖动中编号不跳变
+        function positionBox(b) {
+            if (!b._el) return;
+            b._el.style.left = b.x + '%'; b._el.style.top = b.y + '%';
+            b._el.style.width = b.w + '%'; b._el.style.height = b.h + '%';
+        }
+
+        function updateRatioClass(b) {
+            if (!b._el) return;
+            var ri = ratioInfo(b);
+            b._el.classList.toggle('ratio-bad', ri.bad);
+            var warn = b._el.querySelector('.ratio-warn');
+            if (ri.bad) {
+                if (!warn) { warn = document.createElement('span'); warn.className = 'ratio-warn'; b._el.appendChild(warn); }
+                warn.textContent = '⚠ 超长 ' + ri.exportW + 'px';
+            } else if (warn) { warn.remove(); }
+        }
+
+        // ② 列优先重排（左→右按中心 x；聚类成列；列内按 y 自上而下），并重新编号
+        function reorderAndRender() {
+            var list = boxes();
+            if (list.length) {
+                list.sort(function (a, b) { return (a.x + a.w / 2) - (b.x + b.w / 2); });
+                var ws = list.map(function (b) { return b.w; }).sort(function (a, b) { return a - b; });
+                var med = ws[Math.floor(ws.length / 2)] || 6;
+                var thr = Math.min(Math.max(2, med * 0.55), med * 1.2);
+                var cols = [], cur = [list[0]];
+                for (var i = 1; i < list.length; i++) {
+                    var pc = cur[cur.length - 1].x + cur[cur.length - 1].w / 2;
+                    var cc = list[i].x + list[i].w / 2;
+                    if (Math.abs(cc - pc) > thr) { cols.push(cur); cur = [list[i]]; }
+                    else { cur.push(list[i]); }
+                }
+                cols.push(cur);
+                var ordered = [];
+                cols.forEach(function (c) { c.sort(function (a, b) { return a.y - b.y; }); ordered.push.apply(ordered, c); });
+                state[curId] = ordered;
+            }
+            renderBoxes();
+            if (selected) { renderPreview(selected); updatePropInfo(selected); }
+        }
+
+        // ① 拖动
+        function startDrag(e, b) {
+            if (e.target.classList.contains('rz')) return;   // 手柄交给缩放
+            e.preventDefault();
+            isDragging = true; dragged = false;
+            selectBox(b);
+            dragStart = { x: e.clientX, y: e.clientY };
+            boxStart = { x: b.x, y: b.y, w: b.w, h: b.h };
+            document.addEventListener('mousemove', onDrag);
+            document.addEventListener('mouseup', stopDrag);
+        }
+        function onDrag(e) {
+            if (!isDragging || !selected) return;
+            dragged = true;
+            var p = pxToPct(e.clientX - dragStart.x, e.clientY - dragStart.y);
+            var b = selected;
+            b.x = Math.max(0, Math.min(100 - b.w, boxStart.x + p.dx));
+            b.y = Math.max(0, Math.min(100 - b.h, boxStart.y + p.dy));
+            positionBox(b);
+        }
+        function stopDrag() {
+            if (!isDragging) return;
+            isDragging = false;
+            document.removeEventListener('mousemove', onDrag);
+            document.removeEventListener('mouseup', stopDrag);
+            if (dragged) reorderAndRender();   // 松手后列优先自动重排编号
+            else renderBoxes();
+        }
+
+        // ① 四角缩放
+        function startResize(e, b, pos) {
+            e.preventDefault(); e.stopPropagation();
+            isResizing = true; resizeHandle = pos; selectBox(b);
+            dragStart = { x: e.clientX, y: e.clientY };
+            boxStart = { x: b.x, y: b.y, w: b.w, h: b.h };
+            document.addEventListener('mousemove', onResize);
+            document.addEventListener('mouseup', stopResize);
+        }
+        function onResize(e) {
+            if (!isResizing || !selected) return;
+            var p = pxToPct(e.clientX - dragStart.x, e.clientY - dragStart.y);
+            var b = selected, min = 2;
+            if (resizeHandle === 'br') { b.w = boxStart.w + p.dx; b.h = boxStart.h + p.dy; }
+            else if (resizeHandle === 'bl') { b.w = boxStart.w - p.dx; b.h = boxStart.h + p.dy; b.x = boxStart.x + (boxStart.w - b.w); }
+            else if (resizeHandle === 'tr') { b.w = boxStart.w + p.dx; b.h = boxStart.h - p.dy; b.y = boxStart.y + (boxStart.h - b.h); }
+            else if (resizeHandle === 'tl') { b.w = boxStart.w - p.dx; b.h = boxStart.h - p.dy; b.x = boxStart.x + (boxStart.w - b.w); b.y = boxStart.y + (boxStart.h - b.h); }
+            b.w = Math.max(min, Math.min(100 - b.x, b.w));
+            b.h = Math.max(min, Math.min(100 - b.y, b.h));
+            b.x = Math.max(0, Math.min(100 - b.w, b.x));
+            b.y = Math.max(0, Math.min(100 - b.h, b.y));
+            positionBox(b);
+            updateRatioClass(b);   // ③ 缩放时实时更新蓝色高亮
+        }
+        function stopResize() {
+            if (!isResizing) return;
+            isResizing = false; resizeHandle = null;
+            document.removeEventListener('mousemove', onResize);
+            document.removeEventListener('mouseup', stopResize);
+            reorderAndRender();
         }
 
         // 框预览：按框坐标从原图裁剪（满文竖排，裁出来是窄高的一条）
@@ -97,9 +238,14 @@
             $('#previewEmpty').hidden = true;
         }
 
-        function select(i) {
-            selected = i;
-            var b = boxes()[i];
+        function selectBox(b) {
+            selected = b;
+            renderBoxes();
+            updatePropInfo(b);
+            renderPreview(b);
+        }
+
+        function updatePropInfo(b) {
             if (!b) { return; }
             $('#propEmpty').hidden = true;
             $('#propBody').hidden = false;
@@ -107,12 +253,13 @@
             $('#propConf').textContent = (b.conf || 0).toFixed(2);
             $('#propFlag').textContent = b.confirmed ? '已确认'
                 : (b.suspect ? '置信度偏低，建议核对' : '待确认');
-            $('#propFile').textContent = task().file + ' · 第 ' + (i + 1) + ' 列';
-            $('#previewInfo').textContent = '第 ' + (i + 1) + ' 列 · ' +
+            var idx = boxes().indexOf(b);
+            $('#propFile').textContent = task().file + ' · 第 ' + (idx + 1) + ' 列';
+            var ri = ratioInfo(b);
+            $('#previewInfo').textContent = '第 ' + (idx + 1) + ' 列 · ' +
                 Math.round(img.naturalWidth * b.w / 100) + '×' +
-                Math.round(img.naturalHeight * b.h / 100) + ' px';
-            renderPreview(b);
-            renderBoxes();
+                Math.round(img.naturalHeight * b.h / 100) + ' px' +
+                (ri.bad ? ' · ⚠ 超长(' + ri.exportW + ')' : '');
         }
 
         function loadTask(id) {
@@ -140,7 +287,8 @@
         }
 
         img.addEventListener('load', function () {
-            if (selected !== null) { renderPreview(boxes()[selected]); }
+            if (selected) { renderPreview(selected); }
+            renderBoxes();   // 图片加载后自然尺寸就绪，重算长宽比高亮
         });
 
         document.querySelectorAll('.wb-task').forEach(function (el) {
@@ -163,33 +311,75 @@
                 if (!d.ok) { toast('AI 画框失败：' + (d.msg || '未知错误')); return; }
                 state[curId] = d.boxes.map(function (b) {
                     return { x: b.x, y: b.y, w: b.w, h: b.h, text: '', conf: b.conf,
-                             suspect: !!b.suspect, src: '', confirmed: false, shown: true };
+                             suspect: !!b.suspect, src: '', confirmed: false, shown: true, _el: null };
                 });
                 renderBoxes();
-                if (state[curId].length) { select(0); }
+                if (state[curId].length) { selectBox(boxes()[0]); }
                 toast('AI 检测完成：' + state[curId].length + ' 个文本列');
             })
             .catch(function (e) { toast('AI 画框请求失败：' + e); })
             .finally(function () { btn.disabled = false; btn.textContent = '🔍 AI 画框'; });
         });
 
-        // 🤖 AI 预测：填充识别文本与置信度
+        // 🤖 AI 预测：逐框裁剪竖排字块（不旋转）→ /api/ocr/recognize（skip_layout=1）→ 回填满文
+        // 与参考工具一致：后端内部按版面分析切分竖条、逆时针旋转 90° 后识别，前端只负责裁剪单框。
         $('#btnPredict').addEventListener('click', function () {
             var shown = boxes().filter(function (b) { return b.shown; });
             if (!shown.length) { toast('请先「AI 画框」或手动添加框'); return; }
             var btn = this;
             btn.disabled = true; btn.textContent = '⏳ 识别中…';
-            setTimeout(function () {
-                boxes().forEach(function (b, i) {
-                    if (!b.shown) return;
-                    var src = task().boxes[i];
-                    if (src) { b.text = src.text; b.conf = src.conf; }
+
+            // 按原图坐标把单个框裁成 PNG blob（竖排字块，不旋转）
+            function cropBlob(b) {
+                return new Promise(function (resolve, reject) {
+                    var sx = img.naturalWidth * b.x / 100, sy = img.naturalHeight * b.y / 100;
+                    var sw = Math.max(1, img.naturalWidth * b.w / 100);
+                    var sh = Math.max(1, img.naturalHeight * b.h / 100);
+                    var c = document.createElement('canvas');
+                    c.width = Math.round(sw); c.height = Math.round(sh);
+                    c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
+                    c.toBlob(function (b2) { b2 ? resolve(b2) : reject(new Error('裁剪失败')); }, 'image/png');
                 });
-                renderBoxes();
-                if (selected !== null) { select(selected); }
-                btn.disabled = false; btn.textContent = '🤖 AI 预测';
-                toast('模拟识别完成，请逐列核对');
-            }, 1200);
+            }
+
+            function predictOne(b) {
+                return cropBlob(b)
+                    .then(function (blob) {
+                        var fd = new FormData();
+                        fd.append('image', blob, 'box.png');
+                        fd.append('model_type', 'ancient');
+                        fd.append('skip_layout', '1');
+                        return fetch('/api/ocr/recognize', { method: 'POST', body: fd });
+                    })
+                    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+                    .then(function (res) {
+                        var d = res.d || {};
+                        if (!res.ok || d.error) { throw new Error(d.error || ('HTTP ' + (d.code || r_status(res)))); }
+                        var cols = d.columns || (d.result && d.result.columns) || [];
+                        b.text = cols.length ? (cols[0].text || '') : '';
+                        if (cols[0] && typeof cols[0].confidence === 'number') b.conf = cols[0].confidence;
+                    });
+            }
+            function r_status(res) { return res.ok ? '' : '失败'; }
+
+            var i = 0, okCount = 0, failCount = 0;
+            function step() {
+                if (i >= shown.length) {
+                    renderBoxes();
+                    if (selected) { selectBox(selected); }
+                    btn.disabled = false; btn.textContent = '🤖 AI 预测';
+                    toast('AI 识别完成：成功 ' + okCount + '，失败 ' + failCount +
+                          (failCount ? '（识别服务未启动或超时？）' : ''));
+                    return;
+                }
+                var b = shown[i];
+                toast('🔮 识别第 ' + (i + 1) + ' / ' + shown.length + ' 列…');
+                predictOne(b)
+                    .then(function () { okCount++; })
+                    .catch(function (e) { failCount++; console.error('AI 预测失败：', e); })
+                    .then(function () { i++; step(); });
+            }
+            step();
         });
 
         // ➕ 添加框：接在最左一列（满文从右往左，新列往左加）
@@ -198,9 +388,9 @@
             var minX = list.length ? Math.min.apply(null, list.map(function (b) { return b.x; })) : 84;
             boxes().push({ x: Math.max(4, minX - 5.8), y: 9, w: 5.2, h: 68,
                            text: '', conf: 0, suspect: false, src: '',
-                           confirmed: false, shown: true });
-            renderBoxes();
-            select(boxes().length - 1);
+                           confirmed: false, shown: true, _el: null });
+            reorderAndRender();
+            selectBox(boxes()[boxes().length - 1]);
         });
 
         // 🗑️ 清空
@@ -221,15 +411,15 @@
 
         // 编辑文本
         $('#propText').addEventListener('input', function () {
-            if (selected === null) return;
-            boxes()[selected].text = this.value;
+            if (!selected) return;
+            selected.text = this.value;
             renderBoxes();
         });
 
         // ✔ 确认
         $('#btnConfirm').addEventListener('click', function () {
-            if (selected === null) { toast('先选中一个框'); return; }
-            boxes()[selected].confirmed = true;
+            if (!selected) { toast('先选中一个框'); return; }
+            selected.confirmed = true;
             renderBoxes();
             toast('已确认');
         });

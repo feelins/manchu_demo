@@ -368,6 +368,39 @@
 .wb-box.active { border-width: 3px; box-shadow: 0 0 0 2px rgba(176, 141, 63, .35); }
 .wb-box.confirmed { border-style: solid; border-color: #059669; background: rgba(5, 150, 105, .10); }
 
+/* ① 框可拖动 / 四角缩放 */
+.wb-box { cursor: move; pointer-events: auto; }
+.wb-box .rz {
+    position: absolute; width: 11px; height: 11px;
+    background: #fff; border: 2px solid var(--gold, #b08d3f); border-radius: 50%;
+    z-index: 5; display: none;
+}
+.wb-box:hover .rz, .wb-box.active .rz { display: block; }
+.wb-box .rz-tl { top: -6px; left: -6px; cursor: nwse-resize; }
+.wb-box .rz-tr { top: -6px; right: -6px; cursor: nesw-resize; }
+.wb-box .rz-bl { bottom: -6px; left: -6px; cursor: nesw-resize; }
+.wb-box .rz-br { bottom: -6px; right: -6px; cursor: nwse-resize; }
+
+/* ③ 长宽比超 48×320 标准 → 醒目红色系（与金色普通框强对比） */
+.wb-box.ratio-bad {
+    border-color: #e53935 !important;
+    border-width: 3px !important;
+    border-style: solid !important;
+    background: rgba(229, 57, 53, .18) !important;
+    box-shadow: 0 0 0 3px rgba(229, 57, 53, .22);
+}
+.wb-box.ratio-bad .tag { background: #e53935 !important; }
+.wb-box.ratio-bad.active { box-shadow: 0 0 0 3px rgba(229, 57, 53, .45) !important; border-color: #e53935 !important; }
+.wb-box .ratio-warn {
+    position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%);
+    font-size: 11px; font-weight: 700; line-height: 1; color: #fff; background: #e53935;
+    padding: 2px 6px; border-radius: 4px; white-space: nowrap; pointer-events: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .2);
+}
+
+/* 标注层精确覆盖图片、且不拦截空白区点击 */
+#boxLayer { position: absolute; inset: 0; pointer-events: none; }
+
 .wb-box .tag {
     position: absolute;
     top: -18px;
