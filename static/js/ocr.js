@@ -1,20 +1,10 @@
 /* ============================================================
-   满文古籍 OCR · 标注工作台前端逻辑
-
-   功能：
-   ① 鼠标拖动框（四角可缩放）
-   ② 拖动 / 增删后，按「列优先（从上到下 → 从左到右）」自动重新编号
-   ③ 框的长高比超出 48×320 标准（h/w > 320/48）时，框与列表项高亮为醒目蓝色
-   ④ AI 模型接入：
-        · AI 画框：POST 整图到 <base>/detect，返回文本框坐标
-        · AI 预测：逐框裁剪竖排字块（不旋转），POST 到 <base>/recognize
-          （model 内部按版面分析切分竖条、逆时针旋转 90° 后识别，
-           单框模式传 skip_layout=1，沿用参考工具的处理方式）
-
-   接口约定（与 modules/ocr 代理一致）：
-        POST {base}/detect        FormData: image        → { boxes:[{x,y,w,h}], box_count }
-        POST {base}/recognize     FormData: image / model_type / skip_layout
-                                                       → { columns:[{column,text,type}] }
+   满文古籍 OCR · 前端逻辑
+   移植自：01ocr/满文古籍OCR智能识别系统_竖版_批量版 汉字识别开关.html
+   改动：后端地址由 localhost:端口 改为网关相对路径 /api/ocr（可用输入框临时覆盖）
+   接口：POST {base}/recognize  FormData: image / model_type / recognize_chinese
+   返回：{ original_image, columns:[{column,text,type}], column_thumbs:[], layout_used }
+        失败返回 { error }
    ============================================================ */
 (function () {
   'use strict';
@@ -23,58 +13,41 @@
 
   const $ = id => document.getElementById(id);
 
-  // ---------- DOM ----------
   const fileInput = $('fileInput');
   const uploadBtn = $('uploadBtn');
-  const aiDetectBtn = $('aiDetectBtn');
-  const aiPredictBtn = $('aiPredictBtn');
-  const addBoxBtn = $('addBoxBtn');
-  const clearBtn = $('clearBtn');
+  const batchBtn = $('batchBtn');
+  const batchFileInput = $('batchFileInput');
+  const recognizeStandardBtn = $('recognizeStandardBtn');
+  const recognizeAncientBtn = $('recognizeAncientBtn');
+  const toggleThumbBtn = $('toggleThumbBtn');
+  const recognizeChineseBtn = $('recognizeChineseBtn');
   const exportBtn = $('exportBtn');
+  const refreshView = $('refreshView');
   const serverUrlInput = $('serverUrl');
   const status = $('status');
-
   const origImg = $('origImg');
-  const imgWrap = $('imgWrap');
-  const bboxLayer = $('bboxLayer');
   const mainPanel = $('mainPanel');
   const emptyHint = $('emptyHint');
   const leftPanel = $('leftPanel');
   const resizer = $('resizer');
-  const annotationList = $('annotationList');
+  const columnsContainer = $('columnsContainer');
 
-  const totalCount = $('totalCount');
-  const okCount = $('okCount');
-  const warnCount = $('warnCount');
-
-  // ---------- 状态 ----------
-  let boxes = [];
-  let selectedBox = null;
-  let isDragging = false;
-  let isResizing = false;
-  let resizeHandle = null;
-  let dragStart = { x: 0, y: 0 };
-  let boxStart = { x: 0, y: 0, w: 0, h: 0 };
-  let imageScale = 1;          // 原图像素 / 显示像素
-  let imgNaturalSize = { w: 0, h: 0 };
-  let nextBoxId = 0;
-  let isManualOrder = false;    // true 时不再自动列优先重排（用户手动改序号）
+  let originalImgData = null;
+  let columnResults = [];
+  let showThumbs = true;
+  let recognizeChinese = false;
+  let lastModelType = 'ancient';
+  let batchResults = [];
+  let batchPendingFiles = [];
   let currentImageName = '';
 
-  // 48×≤320 标准：旋转后高 48、宽 ≤ 320
-  const TARGET_H = 48;
-  const MAX_W = 320;
-  const MAX_RATIO = MAX_W / TARGET_H;   // ≈ 6.67
-
   // ------------------------------------------------------------
-  // 后端地址
+  // 后端地址：默认走门户网关 /api/ocr，调试时可在工具栏临时覆盖
   // ------------------------------------------------------------
-  function getBaseUrl() {
+  function getServerUrl() {
     const url = (serverUrlInput && serverUrlInput.value || '').trim();
     return (url || API_DEFAULT).replace(/\/+$/, '');
   }
-  const getDetectUrl = () => getBaseUrl() + '/detect';
-  const getRecognizeUrl = () => getBaseUrl() + '/recognize';
 
   function setStatus(text, revert) {
     status.textContent = text;
@@ -92,477 +65,323 @@
     currentImageName = file.name.replace(/\.[^/.]+$/, '');
     const reader = new FileReader();
     reader.onload = e => {
-      origImg.onload = () => {
-        emptyHint.style.display = 'none';
-        mainPanel.style.display = 'flex';
-        imgNaturalSize = { w: origImg.naturalWidth, h: origImg.naturalHeight };
-        imageScale = origImg.naturalWidth / origImg.offsetWidth;
-        // 让标注层与图片显示尺寸一致
-        bboxLayer.style.width = origImg.offsetWidth + 'px';
-        bboxLayer.style.height = origImg.offsetHeight + 'px';
-        aiDetectBtn.disabled = false;
-        addBoxBtn.disabled = false;
-        clearBtn.disabled = false;
-        setStatus('图片已加载，可「AI 画框」或「添加框」');
-      };
-      origImg.src = e.target.result;
+      originalImgData = e.target.result;
+      origImg.src = originalImgData;
+      mainPanel.style.display = 'flex';
+      if (emptyHint) emptyHint.style.display = 'none';
+      recognizeStandardBtn.disabled = false;
+      recognizeAncientBtn.disabled = false;
+      recognizeChineseBtn.disabled = false;
+      setStatus('图片已加载，请选择识别模式');
     };
     reader.readAsDataURL(file);
   });
 
   // ------------------------------------------------------------
-  // 框的创建 / 渲染
+  // 识别（单张）
   // ------------------------------------------------------------
-  function addBox(x, y, w, h, text, skipRefresh) {
-    const id = nextBoxId++;
-    const el = document.createElement('div');
-    el.className = 'bbox';
-    el.id = `box-${id}`;
-    el.style.left = `${x}px`;
-    el.style.top = `${y}px`;
-    el.style.width = `${w}px`;
-    el.style.height = `${h}px`;
+  recognizeStandardBtn.onclick = () => doRecognize('standard', '正楷');
+  recognizeAncientBtn.onclick = () => doRecognize('ancient', '古籍');
 
-    const indexLabel = document.createElement('div');
-    indexLabel.className = 'bbox-index';
-    indexLabel.textContent = '?';
-    el.appendChild(indexLabel);
-
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'delete-btn';
-    deleteBtn.textContent = '×';
-    deleteBtn.onclick = (e) => { e.stopPropagation(); deleteBox(id); };
-    el.appendChild(deleteBtn);
-
-    ['tl', 'tr', 'bl', 'br'].forEach(pos => {
-      const handle = document.createElement('div');
-      handle.className = `resize-handle ${pos}`;
-      handle.onmousedown = (e) => startResize(e, id, pos);
-      el.appendChild(handle);
-    });
-
-    const wordWarning = document.createElement('div');
-    wordWarning.className = 'word-warning';
-    wordWarning.textContent = '⚠ 超长';
-    el.appendChild(wordWarning);
-
-    el.addEventListener('mousedown', (e) => startDrag(e, id));
-    bboxLayer.appendChild(el);
-
-    const nextOrder = isManualOrder ? boxes.filter(b => b !== null).length : -1;
-    boxes.push({ id, x, y, w, h, text: text || '', element: el, displayOrder: nextOrder });
-    if (!skipRefresh) { refreshAll(); selectBox(id); }
-    return id;
-  }
-
-  function updateBoxPosition(id) {
-    const box = boxes.find(b => b && b.id === id);
-    if (!box) return;
-    box.element.style.left = `${box.x}px`;
-    box.element.style.top = `${box.y}px`;
-    box.element.style.width = `${box.w}px`;
-    box.element.style.height = `${box.h}px`;
-  }
-
-  // 长宽比是否合格：h/w ≤ 320/48 且 旋转后宽 ≤ 320
-  function boxRatioInfo(box) {
-    const ratio = box.h / box.w;
-    const exportW = Math.round(box.h * TARGET_H / box.w);
-    const isOk = ratio <= MAX_RATIO && exportW <= MAX_W;
-    const isWarning = ratio > MAX_RATIO;   // 超出 48×320 标准 → 蓝色高亮
-    return { isOk, isWarning, exportW };
-  }
-
-  function updateRatioTip(id) {
-    const box = boxes.find(b => b && b.id === id);
-    if (!box) return;
-    const { isOk, isWarning } = boxRatioInfo(box);
-    box.element.className = 'bbox ' + (isOk ? '' : isWarning ? 'warning' : 'error');
-    const annoItem = $('anno-' + id);
-    if (annoItem) annoItem.className = 'annotation-item ' + (isOk ? '' : isWarning ? 'warning' : 'error');
-    const sizeEl = $('size-' + id);
-    if (sizeEl) {
-      const { exportW } = boxRatioInfo(box);
-      sizeEl.textContent = `${TARGET_H}×${exportW}`;
-      sizeEl.className = 'anno-size ' + (isOk ? 'ok' : isWarning ? 'warning' : 'error');
+  recognizeChineseBtn.onclick = () => {
+    recognizeChinese = !recognizeChinese;
+    recognizeChineseBtn.classList.toggle('active', recognizeChinese);
+    recognizeChineseBtn.textContent = recognizeChinese ? '🇨🇳 识别汉字(开)' : '🇨🇳 识别汉字';
+    if (fileInput.files[0] && columnResults.length > 0) {
+      doRecognize(lastModelType, lastModelType === 'ancient' ? '古籍' : '正楷');
     }
-  }
-
-  // ------------------------------------------------------------
-  // 自动编号（列优先：左→右按中心 x，列内上→下按 y）
-  // ------------------------------------------------------------
-  function refreshAll(autoSelect = true, autoSort = true) {
-    const validBoxes = boxes.filter(b => b !== null);
-    if (validBoxes.length === 0) {
-      annotationList.innerHTML = '';
-      updateStats();
-      exportBtn.disabled = true;
-      return;
-    }
-
-    let ordered;
-    if (autoSort && !isManualOrder) {
-      validBoxes.sort((a, b) => (a.x + a.w / 2) - (b.x + b.w / 2));
-      const widths = validBoxes.map(b => b.w).sort((a, b) => a - b);
-      const medianColWidth = widths[Math.floor(widths.length / 2)] || 60;
-      const colThreshold = Math.min(Math.max(20, medianColWidth * 0.55), medianColWidth * 1.2);
-      const columns = [];
-      let currentCol = [validBoxes[0]];
-      for (let i = 1; i < validBoxes.length; i++) {
-        const prevCenter = currentCol[currentCol.length - 1].x + currentCol[currentCol.length - 1].w / 2;
-        const currCenter = validBoxes[i].x + validBoxes[i].w / 2;
-        if (Math.abs(currCenter - prevCenter) > colThreshold) {
-          columns.push(currentCol);
-          currentCol = [validBoxes[i]];
-        } else {
-          currentCol.push(validBoxes[i]);
-        }
-      }
-      columns.push(currentCol);
-      ordered = [];
-      columns.forEach(col => { col.sort((a, b) => a.y - b.y); ordered.push(...col); });
-    } else {
-      ordered = [...validBoxes].sort((a, b) => a.displayOrder - b.displayOrder);
-    }
-
-    ordered.forEach((box, order) => {
-      box.displayOrder = order;
-      const label = box.element.querySelector('.bbox-index');
-      if (label) label.textContent = order + 1;
-    });
-
-    annotationList.innerHTML = '';
-    ordered.forEach((box, order) => addAnnotationItem(box, order));
-    updateStats();
-    exportBtn.disabled = false;
-    if (autoSelect && ordered.length > 0) selectBox(ordered[0].id);
-  }
-
-  function addAnnotationItem(box, order) {
-    const item = document.createElement('div');
-    item.className = 'annotation-item';
-    item.id = `anno-${box.id}`;
-    item.onclick = () => selectBox(box.id);
-
-    const { isOk, isWarning, exportW } = boxRatioInfo(box);
-
-    item.innerHTML = `
-      <input type="number" class="anno-index" id="order-${box.id}"
-             value="${order + 1}" min="1" max="${boxes.filter(b => b !== null).length}"
-             onchange="window.__ocr.forceReorder(${box.id}, parseInt(this.value))"
-             onclick="event.stopPropagation();"
-             onfocus="this.select();"
-             title="点击蓝色序号圆圈 → 输入新序号 → 回车确认">
-      <textarea class="anno-input" id="input-${box.id}" placeholder="输入满文标注..."
-                onfocus="window.__ocr.selectBox(${box.id})"
-                oninput="window.__ocr.updateText(${box.id}, this.value)">${box.text || ''}</textarea>
-      <div class="anno-size ${isOk ? 'ok' : isWarning ? 'warning' : 'error'}" id="size-${box.id}">${TARGET_H}×${exportW}</div>
-      <button class="anno-delete" onclick="window.__ocr.deleteBox(${box.id})">×</button>
-    `;
-    annotationList.appendChild(item);
-  }
-
-  function updateStats() {
-    const valid = boxes.filter(b => b !== null);
-    let ok = 0, warn = 0;
-    valid.forEach(b => { const r = boxRatioInfo(b); if (r.isOk) ok++; else warn++; });
-    totalCount.textContent = valid.length;
-    okCount.textContent = ok;
-    warnCount.textContent = warn;
-  }
-
-  // ------------------------------------------------------------
-  // 拖动 / 缩放
-  // ------------------------------------------------------------
-  function startDrag(e, id) {
-    if (e.target.classList.contains('delete-btn') || e.target.classList.contains('resize-handle')) return;
-    e.preventDefault();
-    isDragging = true;
-    selectedBox = id;
-    const box = boxes.find(b => b && b.id === id);
-    dragStart = { x: e.clientX, y: e.clientY };
-    boxStart = { x: box.x, y: box.y, w: box.w, h: box.h };
-    selectBox(id);
-    document.addEventListener('mousemove', onDrag);
-    document.addEventListener('mouseup', stopDrag);
-  }
-  function onDrag(e) {
-    if (!isDragging || selectedBox === null) return;
-    const dx = e.clientX - dragStart.x;
-    const dy = e.clientY - dragStart.y;
-    const box = boxes.find(b => b && b.id === selectedBox);
-    box.x = Math.max(0, boxStart.x + dx);
-    box.y = Math.max(0, boxStart.y + dy);
-    updateBoxPosition(selectedBox);
-  }
-  function stopDrag() {
-    if (!isDragging) return;
-    isDragging = false;
-    document.removeEventListener('mousemove', onDrag);
-    document.removeEventListener('mouseup', stopDrag);
-    if (selectedBox !== null) {
-      // 拖动后按列优先重新编号（② 核心）
-      refreshAll(false, true);
-      selectBox(selectedBox);
-    }
-  }
-
-  function startResize(e, id, handle) {
-    e.preventDefault();
-    e.stopPropagation();
-    isResizing = true;
-    resizeHandle = handle;
-    selectedBox = id;
-    const box = boxes.find(b => b && b.id === id);
-    dragStart = { x: e.clientX, y: e.clientY };
-    boxStart = { x: box.x, y: box.y, w: box.w, h: box.h };
-    selectBox(id);
-    document.addEventListener('mousemove', onResize);
-    document.addEventListener('mouseup', stopResize);
-  }
-  function onResize(e) {
-    if (!isResizing || selectedBox === null) return;
-    const dx = e.clientX - dragStart.x;
-    const dy = e.clientY - dragStart.y;
-    const box = boxes.find(b => b && b.id === selectedBox);
-    switch (resizeHandle) {
-      case 'br': box.w = Math.max(10, boxStart.w + dx); box.h = Math.max(10, boxStart.h + dy); break;
-      case 'bl': box.w = Math.max(10, boxStart.w - dx); box.h = Math.max(10, boxStart.h + dy); box.x = boxStart.x + (boxStart.w - box.w); break;
-      case 'tr': box.w = Math.max(10, boxStart.w + dx); box.h = Math.max(10, boxStart.h - dy); box.y = boxStart.y + (boxStart.h - box.h); break;
-      case 'tl': box.w = Math.max(10, boxStart.w - dx); box.h = Math.max(10, boxStart.h - dy); box.x = boxStart.x + (boxStart.w - box.w); box.y = boxStart.y + (boxStart.h - box.h); break;
-    }
-    updateBoxPosition(selectedBox);
-    updateRatioTip(selectedBox);   // 缩放时实时更新蓝色高亮（③）
-  }
-  function stopResize() {
-    if (!isResizing) return;
-    isResizing = false;
-    resizeHandle = null;
-    document.removeEventListener('mousemove', onResize);
-    document.removeEventListener('mouseup', stopResize);
-    if (selectedBox !== null) { updateRatioTip(selectedBox); refreshAll(false, true); selectBox(selectedBox); }
-  }
-
-  // ------------------------------------------------------------
-  // 选择 / 删除 / 清空
-  // ------------------------------------------------------------
-  function selectBox(id) {
-    if (id === null) {
-      boxes.forEach(b => { if (b) b.element.classList.remove('selected'); });
-      document.querySelectorAll('.annotation-item').forEach(item => item.classList.remove('active'));
-      selectedBox = null;
-      return;
-    }
-    boxes.forEach(b => { if (b) b.element.classList.toggle('selected', b.id === id); });
-    document.querySelectorAll('.annotation-item').forEach(item => item.classList.toggle('active', item.id === `anno-${id}`));
-    selectedBox = id;
-  }
-
-  function updateText(id, value) {
-    const box = boxes.find(b => b && b.id === id);
-    if (box) box.text = value;
-  }
-
-  // 手动改序号：插入式重排并锁定手动模式，避免被自动排序覆盖
-  function forceReorder(boxId, newOrder) {
-    const valid = boxes.filter(b => b !== null);
-    if (valid.length === 0) return;
-    let targetIndex = Math.max(1, Math.min(newOrder, valid.length)) - 1;
-    const sorted = [...valid].sort((a, b) => a.displayOrder - b.displayOrder);
-    const currentIdx = sorted.findIndex(b => b.id === boxId);
-    if (currentIdx === -1 || currentIdx === targetIndex) { refreshAll(false, false); selectBox(boxId); return; }
-    isManualOrder = true;
-    const [moved] = sorted.splice(currentIdx, 1);
-    sorted.splice(targetIndex, 0, moved);
-    sorted.forEach((box, idx) => { box.displayOrder = idx; });
-    refreshAll(false, false);
-    selectBox(boxId);
-  }
-
-  function deleteBox(id) {
-    const idx = boxes.findIndex(b => b && b.id === id);
-    if (idx >= 0) {
-      if (boxes[idx].element) boxes[idx].element.remove();
-      boxes[idx] = null;
-      if (selectedBox === id) selectedBox = null;
-      refreshAll();
-    }
-  }
-
-  function clearAll() {
-    boxes.forEach(b => { if (b && b.element) b.element.remove(); });
-    boxes = [];
-    selectedBox = null;
-    nextBoxId = 0;
-    isManualOrder = false;
-    annotationList.innerHTML = '';
-    updateStats();
-    aiPredictBtn.disabled = true;
-    exportBtn.disabled = true;
-  }
-
-  addBoxBtn.onclick = () => {
-    const id = addBox(40, 40, 24, 120, '', true);
-    refreshAll();
-    selectBox(id);
-    setStatus('已添加新框，可拖动调整');
   };
 
-  clearBtn.onclick = () => { clearAll(); setStatus('已清空'); };
+  async function doRecognize(modelType, modelLabel) {
+    const file = fileInput.files[0];
+    if (!file) return;
 
-  // ------------------------------------------------------------
-  // AI 画框（检测文本框）
-  // ------------------------------------------------------------
-  aiDetectBtn.onclick = aiDetect;
+    lastModelType = modelType;
+    setStatus(`正在${modelLabel}识别...`);
 
-  async function aiDetect() {
-    if (!origImg.src) { setStatus('请先上传图片'); return; }
-    setStatus('🤖 AI 正在检测文本框...');
+    const formData = new FormData();
+    formData.append('image', file);
+    formData.append('model_type', modelType);
+    formData.append('recognize_chinese', recognizeChinese ? '1' : '0');
+
     try {
-      const response = await fetch(origImg.src);
-      const blob = await response.blob();
-      const file = new File([blob], (currentImageName || 'image') + '.jpg', { type: 'image/jpeg' });
-      const formData = new FormData();
-      formData.append('image', file);
-
-      const detectResp = await fetch(getDetectUrl(), { method: 'POST', body: formData });
-      if (!detectResp.ok) throw new Error('检测失败: ' + detectResp.status);
-      const result = await detectResp.json();
-
-      if (!result.boxes || result.boxes.length === 0) {
-        setStatus('⚠️ AI 未检测到文本框');
+      const resp = await fetch(getServerUrl() + '/recognize', { method: 'POST', body: formData });
+      const data = await resp.json();
+      if (data.error) {
+        setStatus('错误: ' + data.error);
         return;
       }
-
-      // 清空现有框
-      boxes.forEach(b => { if (b && b.element) b.element.remove(); });
-      boxes = [];
-      selectedBox = null;
-      nextBoxId = 0;
-      isManualOrder = false;
-
-      result.boxes.forEach(box => {
-        const x = box.x / imageScale;
-        const y = box.y / imageScale;
-        const w = box.w / imageScale;
-        const h = box.h / imageScale;
-        addBox(x, y, w, h, '', true);
-      });
-      refreshAll();
-      aiPredictBtn.disabled = false;
-      setStatus(`🎉 AI 画框完成！共 ${result.boxes.length} 框`);
-    } catch (err) {
-      console.error('AI 检测错误:', err);
-      setStatus('❌ AI 检测失败：' + err.message + '（请确认检测服务可用）');
+      origImg.src = data.original_image || originalImgData;
+      columnResults = data.columns || [];
+      window.lastColumnThumbs = data.column_thumbs || [];
+      toggleThumbBtn.disabled = false;
+      batchBtn.disabled = false;
+      exportBtn.disabled = false;
+      toggleThumbBtn.classList.add('active');
+      batchResults = [];
+      renderColumns();
+      setStatus(`${modelLabel}识别完成，共 ${columnResults.length} 列`);
+    } catch (e) {
+      setStatus('连接识别服务失败，请确认后端 ' + getServerUrl() + ' 可用');
     }
   }
 
   // ------------------------------------------------------------
-  // AI 预测（逐框识别，单框模式跳过版面分析）
-  // 注意：裁剪竖排字块后「不旋转」直接送后端，后端内部按版面分析
-  //       切分竖条并逆时针旋转 90° 后识别（沿用参考工具处理方式）
+  // 批量处理
   // ------------------------------------------------------------
-  aiPredictBtn.onclick = aiPredict;
+  batchBtn.onclick = () => {
+    batchFileInput.value = '';
+    batchFileInput.click();
+  };
 
-  async function aiPredict() {
-    const valid = boxes.filter(b => b !== null);
-    if (valid.length === 0) { setStatus('请先画框或添加框'); return; }
-    setStatus('🔮 AI 预测中...');
-    let success = 0, fail = 0;
-    for (const box of valid) {
+  batchFileInput.onchange = async () => {
+    const files = Array.from(batchFileInput.files);
+    if (!files.length) return;
+    batchPendingFiles = files;
+
+    $('btnModelAncient').onclick = () => startBatchProcess('ancient', '古籍');
+    $('btnModelStandard').onclick = () => startBatchProcess('standard', '正楷');
+    $('btnModelCancel').onclick = () => {
+      $('modelSelectOverlay').classList.remove('active');
+      batchPendingFiles = [];
+      batchFileInput.value = '';
+    };
+
+    $('modelSelectOverlay').classList.add('active');
+    $('modelSelectCount').textContent = `已选择 ${files.length} 张图片`;
+  };
+
+  async function startBatchProcess(modelType, modelLabel) {
+    $('modelSelectOverlay').classList.remove('active');
+    const files = batchPendingFiles;
+    batchPendingFiles = [];
+
+    batchResults = [];
+    setStatus(`批量处理开始，共 ${files.length} 张图片，使用 ${modelLabel} 模型...`);
+    batchBtn.disabled = true;
+    recognizeStandardBtn.disabled = true;
+    recognizeAncientBtn.disabled = true;
+    exportBtn.disabled = true;
+
+    $('batchOverlay').classList.add('active');
+    $('batchProgressModel').textContent = modelLabel + 'AI识别';
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const pct = Math.round((i / files.length) * 100);
+      $('batchProgressBar').style.width = pct + '%';
+      $('batchProgressText').textContent = `${i + 1} / ${files.length}`;
+      $('batchProgressCurrent').textContent = file.name;
+      status.textContent = `正在批量处理 [${i + 1}/${files.length}]: ${file.name} ...`;
+
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('model_type', modelType);
+      formData.append('recognize_chinese', recognizeChinese ? '1' : '0');
+
       try {
-        const origX = Math.round(box.x * imageScale);
-        const origY = Math.round(box.y * imageScale);
-        const origW = Math.round(box.w * imageScale);
-        const origH = Math.round(box.h * imageScale);
-        if (origW <= 0 || origH <= 0) { fail++; continue; }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = origW;
-        canvas.height = origH;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(origImg, origX, origY, origW, origH, 0, 0, origW, origH);
-
-        const blob = await new Promise((resolve, reject) => {
-          canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob null')), 'image/png');
-        });
-        const file = new File([blob], `box_${box.id}.png`, { type: 'image/png' });
-        const formData = new FormData();
-        formData.append('image', file);
-        formData.append('model_type', 'ancient');
-        formData.append('skip_layout', '1');   // 单框模式：跳过版面分析，直送 OCR
-
-        const resp = await fetch(getRecognizeUrl(), { method: 'POST', body: formData });
-        if (!resp.ok) { fail++; continue; }
-        const result = await resp.json();
-        let text = '';
-        if (result && result.columns && Array.isArray(result.columns) && result.columns.length > 0) {
-          text = result.columns[0].text || '';
+        const resp = await fetch(getServerUrl() + '/recognize', { method: 'POST', body: formData });
+        const data = await resp.json();
+        if (data.error) {
+          batchResults.push({ filename: file.name, error: data.error, columns: [] });
+          continue;
         }
-        box.text = text || '';
-        const input = $('input-' + box.id);
-        if (input) input.value = text || '';
-        success++;
-      } catch (err) {
-        console.error(`🔮 AI预测 框 ${box.displayOrder + 1} 失败:`, err);
-        fail++;
+        batchResults.push({
+          filename: file.name,
+          columns: data.columns,
+          columnCount: data.columns.length,
+          layoutUsed: data.layout_used,
+          modelType: modelType
+        });
+      } catch (e) {
+        batchResults.push({ filename: file.name, error: '连接服务器失败', columns: [] });
       }
     }
-    setStatus(`🔮 AI 预测完成！成功 ${success}，失败 ${fail}`, true);
+
+    $('batchProgressBar').style.width = '100%';
+    $('batchProgressText').textContent = `${files.length} / ${files.length}`;
+    $('batchProgressCurrent').textContent = '处理完成';
+    setTimeout(() => {
+      $('batchOverlay').classList.remove('active');
+      $('batchProgressBar').style.width = '0%';
+    }, 800);
+
+    columnResults = [];
+    window.lastColumnThumbs = [];
+    origImg.src = '';
+    columnsContainer.innerHTML = '';
+    mainPanel.style.display = 'none';
+    if (emptyHint) emptyHint.style.display = '';
+    toggleThumbBtn.disabled = true;
+    toggleThumbBtn.classList.remove('active');
+    recognizeChineseBtn.disabled = true;
+    recognizeChineseBtn.classList.remove('active');
+    recognizeChineseBtn.textContent = '🇨🇳 识别汉字';
+
+    const successCount = batchResults.filter(r => !r.error).length;
+    setStatus(`批量处理完成: ${files.length} 张, 成功 ${successCount} 张, 失败 ${files.length - successCount} 张`);
+    batchBtn.disabled = false;
+    recognizeStandardBtn.disabled = false;
+    recognizeAncientBtn.disabled = false;
+    exportBtn.disabled = false;
+    batchFileInput.value = '';
   }
 
   // ------------------------------------------------------------
-  // 导出（标注结果 txt）
+  // 显示/隐藏列图
+  // ------------------------------------------------------------
+  toggleThumbBtn.onclick = () => {
+    showThumbs = !showThumbs;
+    toggleThumbBtn.textContent = showThumbs ? '👁️ 显示列图' : '🚫 隐藏列图';
+    toggleThumbBtn.classList.toggle('active', showThumbs);
+    renderColumns();
+  };
+
+  // ------------------------------------------------------------
+  // 导出
   // ------------------------------------------------------------
   exportBtn.onclick = () => {
-    const valid = boxes.filter(b => b !== null).sort((a, b) => a.displayOrder - b.displayOrder);
-    if (!valid.length) { setStatus('无标注可导出'); return; }
-    let content = `满文古籍 OCR 标注结果\n图片: ${currentImageName || 'unknown'}\n生成时间: ${new Date().toLocaleString()}\n标准: 旋转后 高48 × 宽≤320\n================================\n\n`;
-    valid.forEach(box => {
-      const { exportW } = boxRatioInfo(box);
-      const flag = boxRatioInfo(box).isOk ? '✓' : '✗超长';
-      content += `第${box.displayOrder + 1}列\t${box.text || '(空)'}\t[原图 ${Math.round(box.w * imageScale)}×${Math.round(box.h * imageScale)} → 48×${exportW}] ${flag}\n`;
+    if (batchResults && batchResults.length > 0) {
+      let content = `满文古籍OCR批量识别结果\n生成时间: ${new Date().toLocaleString()}\n服务: ${getServerUrl()}\n================================\n\n`;
+      batchResults.forEach((item, idx) => {
+        content += `【文件 ${idx + 1}】${item.filename}\n`;
+        if (item.error) {
+          content += `  错误: ${item.error}\n`;
+        } else {
+          content += `  模型: ${item.modelType === 'ancient' ? '古籍' : '正楷'}, 共 ${item.columns ? item.columns.length : 0} 列\n`;
+          if (item.columns && item.columns.length > 0) {
+            item.columns.forEach(col => {
+              if (col.type === 'chinese' && !recognizeChinese) return;
+              content += `  第${col.column}列\t${col.text || '(空)'}\n`;
+            });
+          }
+        }
+        content += '\n';
+      });
+      download(content, `batch_ocr_result_${Date.now()}.txt`);
+      setStatus(`已导出 ${batchResults.length} 个文件的批量识别结果`);
+      return;
+    }
+
+    const exportColumns = columnResults.filter(col => {
+      if (col.type === 'chinese') return recognizeChinese;
+      return true;
     });
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    if (!exportColumns.length) {
+      setStatus('无识别结果可导出');
+      return;
+    }
+    let content = `满文古籍OCR识别结果\n生成时间: ${new Date().toLocaleString()}\n服务: ${getServerUrl()}\n================================\n\n`;
+    exportColumns.forEach(col => {
+      content += `第${col.column}列\t${col.text || '(空)'}\n`;
+    });
+    download(content, `ocr_result_${currentImageName || 'manju'}_${Date.now()}.txt`);
+    setStatus(`已导出 ${exportColumns.length} 列识别结果`);
+  };
+
+  function download(text, filename) {
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `ocr_annot_${currentImageName || 'manju'}_${Date.now()}.txt`;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-    setStatus(`已导出 ${valid.length} 框标注结果`);
-  };
+  }
+
+  // ------------------------------------------------------------
+  // 渲染竖排列（列缩略图用 Canvas 旋转 90°）
+  // ------------------------------------------------------------
+  const PLACEHOLDER_GOLD = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"%3E%3Crect width="300" height="300" fill="%23f5e6c8"/%3E%3C/svg%3E';
+  const PLACEHOLDER_GRAY = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="30" height="200" viewBox="0 0 30 200"%3E%3Crect width="30" height="200" fill="%23e3dbcd"/%3E%3C/svg%3E';
+
+  function renderColumns() {
+    columnsContainer.innerHTML = '';
+    const hanSize = $('hanSize').value + 'px';
+    const manjuSize = $('manjuSize').value + 'px';
+
+    const filteredColumns = columnResults.filter(col => {
+      if (col.type === 'chinese') return recognizeChinese;
+      return true;
+    });
+
+    filteredColumns.forEach((col, idx) => {
+      const div = document.createElement('div');
+      div.className = 'column';
+      if (col.type === 'chinese') div.classList.add('chinese-column');
+
+      const thumbDiv = document.createElement('div');
+      thumbDiv.className = 'col-thumb';
+      if (!showThumbs) thumbDiv.classList.add('hidden');
+
+      const img = document.createElement('img');
+      img.style.display = 'block';
+      img.style.maxHeight = '100%';
+      img.style.objectFit = 'contain';
+
+      const srcData = (window.lastColumnThumbs && window.lastColumnThumbs[idx])
+        ? window.lastColumnThumbs[idx]
+        : PLACEHOLDER_GOLD;
+
+      const tempImg = new Image();
+      tempImg.crossOrigin = 'anonymous';
+      tempImg.onload = function () {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = tempImg.height;
+        canvas.height = tempImg.width;
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate(90 * Math.PI / 180);
+        ctx.drawImage(tempImg, -tempImg.width / 2, -tempImg.height / 2);
+        img.src = canvas.toDataURL('image/jpeg', 0.9);
+      };
+      tempImg.onerror = function () {
+        img.src = PLACEHOLDER_GRAY;
+      };
+      tempImg.src = srcData;
+
+      thumbDiv.appendChild(img);
+
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'col-content';
+
+      const isChinese = col.type === 'chinese';
+      const titleClass = isChinese ? 'col-title chinese-title' : 'col-title';
+      const titleText = isChinese ? `第${col.column}列(汉)` : `第${col.column}列`;
+      const textClass = isChinese ? 'chinese-text' : 'manju-text';
+      const fontSize = isChinese ? hanSize : manjuSize;
+
+      contentDiv.innerHTML = `
+        <div class="${titleClass}" style="font-size:${hanSize}">${titleText}</div>
+        <div class="${textClass}" style="font-size:${fontSize}">${col.text || ''}</div>
+      `;
+
+      div.appendChild(thumbDiv);
+      div.appendChild(contentDiv);
+      columnsContainer.appendChild(div);
+    });
+  }
+
+  refreshView.onclick = renderColumns;
 
   // ------------------------------------------------------------
   // 左右分栏拖拽
   // ------------------------------------------------------------
-  let isPanelResizing = false;
+  let isResizing = false;
   resizer.addEventListener('mousedown', () => {
-    isPanelResizing = true;
+    isResizing = true;
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
   });
   document.addEventListener('mousemove', e => {
-    if (!isPanelResizing) return;
+    if (!isResizing) return;
     const rect = mainPanel.getBoundingClientRect();
     const pct = (e.clientX - rect.left) / rect.width * 100;
     if (pct > 15 && pct < 80) leftPanel.style.width = pct + '%';
   });
   document.addEventListener('mouseup', () => {
-    isPanelResizing = false;
+    isResizing = false;
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
-  });
-
-  // 暴露给内联 on* 处理器
-  window.__ocr = { selectBox, deleteBox, updateText, forceReorder };
-
-  // 窗口尺寸变化时同步标注层尺寸
-  window.addEventListener('resize', () => {
-    if (origImg && origImg.src && origImg.offsetWidth) {
-      imageScale = origImg.naturalWidth / origImg.offsetWidth;
-      bboxLayer.style.width = origImg.offsetWidth + 'px';
-      bboxLayer.style.height = origImg.offsetHeight + 'px';
-    }
   });
 })();

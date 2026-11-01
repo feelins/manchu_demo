@@ -10,12 +10,10 @@
 <section class="section ocr-section">
   <div class="section-head">
     <div class="section-eyebrow">Manuscript OCR</div>
-    <h2 class="section-title">满文古籍 OCR · 标注工作台</h2>
+    <h2 class="section-title">满文古籍 OCR</h2>
     <p class="section-desc">
-      上传竖排古籍图像后，可使用<b>AI 画框</b>自动检测文本框，
-      再用<b>AI 预测</b>逐框识别满文（模型内部按版面分析切分竖条、逆时针旋转 90° 后识别）。
-      框支持鼠标<b>拖动 / 四角缩放</b>，松手后<b>列优先自动重新编号</b>；
-      长高比超出 48×320 标准的框会高亮为<b>醒目蓝色</b>，便于人工调整。
+      面向竖排古籍的满文光学字符识别：上传图像后可选用<b>正楷</b>或<b>古籍</b>模型识别，
+      按列展示传统满文结果，并可同步识读页面中的汉字；支持批量处理与结果导出。
     </p>
   </div>
 
@@ -25,17 +23,40 @@
       <button id="uploadBtn" class="btn btn-primary">📁 上传图片</button>
       <input type="file" id="fileInput" accept="image/*" hidden>
 
-      <button id="aiDetectBtn" class="btn btn-gold" disabled>🤖 AI 画框</button>
-      <button id="aiPredictBtn" class="btn btn-purple" disabled>🔮 AI 预测</button>
-      <button id="addBoxBtn" class="btn btn-ink" disabled>➕ 添加框</button>
-      <button id="clearBtn" class="btn btn-outline" disabled>🗑️ 清空</button>
-      <button id="exportBtn" class="btn btn-green" disabled>📤 导出</button>
+      <button id="recognizeStandardBtn" class="btn btn-gold" disabled>🔍 正楷AI识别</button>
+      <button id="recognizeAncientBtn" class="btn btn-gold" disabled>📜 古籍AI识别</button>
+      <button id="toggleThumbBtn" class="btn" disabled>👁️ 显示列图</button>
+      <button id="recognizeChineseBtn" class="btn btn-green" disabled>🇨🇳 识别汉字</button>
+      <button id="batchBtn" class="btn btn-ink">📦 批量处理</button>
+      <input type="file" id="batchFileInput" accept="image/*" multiple hidden>
+      <button id="exportBtn" class="btn btn-outline" disabled>📤 导出结果</button>
 
       <span class="divider"></span>
 
-      <span class="ocr-stat">总框数 <b id="totalCount">0</b></span>
-      <span class="ocr-stat ok">合格 <b id="okCount">0</b></span>
-      <span class="ocr-stat warn">超长 <b id="warnCount">0</b></span>
+      <label class="field"><span>汉字字号</span>
+        <select id="hanSize">
+          <option value="16">16</option>
+          <option value="18">18</option>
+          <option value="20">20</option>
+          <option value="24">24</option>
+        </select>
+      </label>
+      <label class="field"><span>满文字号</span>
+        <select id="manjuSize">
+          <option value="26">26</option>
+          <option value="30">30</option>
+          <option value="34">34</option>
+          <option value="38">38</option>
+          <option value="42">42</option>
+          <option value="46" selected>46</option>
+          <option value="50">50</option>
+          <option value="54">54</option>
+          <option value="58">58</option>
+          <option value="62">62</option>
+          <option value="66">66</option>
+        </select>
+      </label>
+      <button id="refreshView" class="btn btn-ghost">🔄 刷新视图</button>
 
       <span class="spacer"></span>
 
@@ -52,31 +73,52 @@
     <!-- ==================== 空状态 ==================== -->
     <div class="ocr-empty" id="emptyHint">
       <div class="ocr-empty-mark">ᠪᡳᡨᡥᡝ</div>
-      <p>请先<b>上传图片</b>，随后可点击「AI 画框」自动检测文本框。</p>
-      <p class="ocr-empty-note">支持竖排古籍满文；框可拖动、四角可缩放，长宽比不合格者显示蓝色提示。</p>
+      <p>请先<b>上传图片</b>（单张）或<b>批量处理</b>（多张），识别结果将按列展示在此处。</p>
+      <p class="ocr-empty-note">支持竖排古籍与正楷满文；勾选「识别汉字」可同步识读页面中的汉字。</p>
     </div>
 
     <!-- ==================== 主工作区 ==================== -->
     <div class="ocr-main" id="mainPanel" style="display:none;">
       <div class="ocr-left" id="leftPanel">
-        <div class="ocr-left-head">原图（拖动框移动 · 四角缩放 · 列优先自动编号）</div>
-        <div class="img-canvas-wrap" id="imgWrap">
-          <img id="origImg" src="" alt="原图">
-          <div class="bbox-layer" id="bboxLayer"></div>
-        </div>
+        <div class="ocr-left-head">原图</div>
+        <img id="origImg" src="" alt="原图">
       </div>
 
       <div class="ocr-resizer" id="resizer" title="拖动调整宽度"></div>
 
       <div class="ocr-right">
-        <div class="ocr-right-head">
-          标注列表（竖排列 · 序号可手动修改）
-        </div>
-        <div class="annotation-list" id="annotationList"></div>
+        <div class="ocr-right-head">识别结果（竖排列）</div>
+        <div class="columns-container" id="columnsContainer"></div>
       </div>
     </div>
   </div>
 </section>
+
+<!-- ==================== 批量进度 ==================== -->
+<div id="batchOverlay">
+  <div class="dialog-box">
+    <div class="dialog-title">📦 批量处理中</div>
+    <div class="dialog-sub" id="batchProgressModel">古籍AI识别</div>
+    <div class="progress-bg">
+      <div class="progress-fill" id="batchProgressBar"></div>
+    </div>
+    <div class="dialog-text" id="batchProgressText">0 / 0</div>
+    <div class="dialog-note" id="batchProgressCurrent">准备中...</div>
+  </div>
+</div>
+
+<!-- ==================== 模型选择 ==================== -->
+<div id="modelSelectOverlay">
+  <div class="dialog-box">
+    <div class="dialog-title">请选择识别模型</div>
+    <div class="dialog-sub" id="modelSelectCount">已选择 0 张图片</div>
+    <div class="dialog-btns">
+      <button id="btnModelAncient" class="btn btn-gold">📜 古籍AI识别</button>
+      <button id="btnModelStandard" class="btn btn-gold">🔍 正楷AI识别</button>
+      <button id="btnModelCancel" class="btn btn-ghost">取消</button>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
